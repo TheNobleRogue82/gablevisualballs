@@ -38,7 +38,7 @@ jobs:
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_LIVELY_PEBBLE_00CD2950F }}
           action: "upload"
-          app_build_command: "" # Skip build step for static HTML site
+          app_build_command: "true" # Skip build step for static HTML site
           ###### Repository/Build Configurations - These values can be configured to match your app requirements. ######
           # For more information regarding Static Web App workflow configurations, please visit: https://aka.ms/swaworkflowconfig
           app_location: "/" # App source code path
