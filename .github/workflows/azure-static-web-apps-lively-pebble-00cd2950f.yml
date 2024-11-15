@@ -33,6 +33,7 @@ jobs:
           api_location: "" # Api source code path - optional
           output_location: "" # Built app content directory - optional
           app_build_command: "" # No build command required for static HTML site
+          deployment_action: "upload" # Specify the deployment action
           ###### End of Repository/Build Configurations ######
 
   close_pull_request_job:
