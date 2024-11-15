@@ -78,30 +78,32 @@
     }
 
     function loadBallsFromData(data) {
-        const today = new Date();
-        data.forEach(record => {
-            try {
-                const date = new Date(Date.parse(record.Date));
-                const daysOld = Math.floor((today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-                if (daysOld > DATE_RANGE) {
-                    console.log('Skipping record due to date range:', record);
-                    return;
-                }
-
-                const amount = parseFloat(record.Amount.replace(/[$,]/g, ''));
-                const diameter = Math.max(MIN_DIAMETER, Math.min(MAX_DIAMETER,
-                    ((amount - MIN_AMOUNT) / (MAX_AMOUNT - MIN_AMOUNT)) * (MAX_DIAMETER - MIN_DIAMETER) + MIN_DIAMETER));
-                const speedFactor = SPEED_FACTORS[Math.min(daysOld, DATE_RANGE)];
-
-                const x = Math.random() * (canvas.width - 200) + 100;
-                const y = Math.random() * (canvas.height - 200) + 100;
-                balls.push(new Ball(x, y, diameter, speedFactor));
-
-            } catch (e) {
-                console.error("Error processing record: ", record, e);
+    const today = new Date();
+    data.forEach(record => {
+        try {
+            const date = new Date(Date.parse(record.Date));
+            const daysOld = Math.floor((today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+            if (daysOld > DATE_RANGE) {
+                console.log('Skipping record due to date range:', record);
+                return;
             }
-        });
-    }
+
+            // Update to access the Amount field using bracket notation to handle extra spaces
+            const amount = parseFloat(record[" Amount "].replace(/[$,]/g, ''));
+            const diameter = Math.max(MIN_DIAMETER, Math.min(MAX_DIAMETER,
+                ((amount - MIN_AMOUNT) / (MAX_AMOUNT - MIN_AMOUNT)) * (MAX_DIAMETER - MIN_DIAMETER) + MIN_DIAMETER));
+            const speedFactor = SPEED_FACTORS[Math.min(daysOld, DATE_RANGE)];
+
+            const x = Math.random() * (canvas.width - 200) + 100;
+            const y = Math.random() * (canvas.height - 200) + 100;
+            balls.push(new Ball(x, y, diameter, speedFactor));
+
+        } catch (e) {
+            console.error("Error processing record: ", record, e);
+        }
+    });
+}
+
 
     function handleCollisions() {
         for (let i = 0; i < balls.length; i++) {
