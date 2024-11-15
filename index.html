@@ -33,49 +33,66 @@
     const balls = [];
 
     class Ball {
-        constructor(x, y, diameter, speedFactor) {
-            this.x = x;
-            this.y = y;
-            this.diameter = diameter;
-            this.radius = diameter / 2;
-            this.color = `rgb(${Math.random() * 205 + 50}, ${Math.random() * 205 + 50}, ${Math.random() * 205 + 50})`;
-            this.speed = speedFactor;
+    constructor(x, y, diameter, speedFactor) {
+        this.x = x;
+        this.y = y;
+        this.diameter = diameter;
+        this.radius = diameter / 2;
+        this.color = [Math.random() * 205 + 50, Math.random() * 205 + 50, Math.random() * 205 + 50]; // Initial RGB
+        this.targetColor = [Math.random() * 255, Math.random() * 255, Math.random() * 255]; // Target RGB
 
-            const angle = Math.random() * 2 * Math.PI;
-            this.velocityX = this.speed * Math.cos(angle);
-            this.velocityY = this.speed * Math.sin(angle);
+        this.speed = speedFactor;
+
+        const angle = Math.random() * 2 * Math.PI;
+        this.velocityX = this.speed * Math.cos(angle);
+        this.velocityY = this.speed * Math.sin(angle);
+    }
+
+    update() {
+        // Update position based on velocity
+        this.x += this.velocityX;
+        this.y += this.velocityY;
+
+        // Boundary collision - reflect direction
+        if (this.x - this.radius < 0) {
+            this.velocityX = Math.abs(this.velocityX);
+            this.x = this.radius;
+        } else if (this.x + this.radius > canvas.width) {
+            this.velocityX = -Math.abs(this.velocityX);
+            this.x = canvas.width - this.radius;
         }
 
-        update() {
-            this.x += this.velocityX;
-            this.y += this.velocityY;
+        if (this.y - this.radius < 0) {
+            this.velocityY = Math.abs(this.velocityY);
+            this.y = this.radius;
+        } else if (this.y + this.radius > canvas.height) {
+            this.velocityY = -Math.abs(this.velocityY);
+            this.y = canvas.height - this.radius;
+        }
 
-            // Boundary collision - reflect direction
-            if (this.x - this.radius < 0) {
-                this.velocityX = Math.abs(this.velocityX);
-                this.x = this.radius;
-            } else if (this.x + this.radius > canvas.width) {
-                this.velocityX = -Math.abs(this.velocityX);
-                this.x = canvas.width - this.radius;
-            }
-
-            if (this.y - this.radius < 0) {
-                this.velocityY = Math.abs(this.velocityY);
-                this.y = this.radius;
-            } else if (this.y + this.radius > canvas.height) {
-                this.velocityY = -Math.abs(this.velocityY);
-                this.y = canvas.height - this.radius;
+        // Color fading towards target color
+        for (let i = 0; i < 3; i++) {
+            if (this.color[i] < this.targetColor[i]) {
+                this.color[i] = Math.min(this.color[i] + 0.5, this.targetColor[i]);
+            } else if (this.color[i] > this.targetColor[i]) {
+                this.color[i] = Math.max(this.color[i] - 0.5, this.targetColor[i]);
             }
         }
 
-        draw() {
-            ctx.fillStyle = this.color;
-            ctx.beginPath();
-            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.closePath();
+        // Check if the target color is reached, and pick a new random target color
+        if (this.color.every((c, index) => Math.abs(c - this.targetColor[index]) < 1)) {
+            this.targetColor = [Math.random() * 255, Math.random() * 255, Math.random() * 255];
         }
     }
+
+    draw() {
+        ctx.fillStyle = `rgb(${Math.round(this.color[0])}, ${Math.round(this.color[1])}, ${Math.round(this.color[2])})`;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.closePath();
+    }
+}
 
    function loadBallsFromData(data) {
     const today = new Date();
