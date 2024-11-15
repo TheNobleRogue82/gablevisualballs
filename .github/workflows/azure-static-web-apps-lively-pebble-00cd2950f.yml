@@ -34,6 +34,7 @@ jobs:
           output_location: "" # Leave empty for simple static HTML sites, or specify if there is a build output folder # Built app content directory - optional
           app_build_command: "" # No build command required for static HTML site
           deployment_action: "upload" # Specify the deployment action
+          deployment_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }} # Add the deployment token for authorization
           ###### End of Repository/Build Configurations ######
 
   close_pull_request_job:
