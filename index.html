@@ -38,8 +38,9 @@
         this.y = y;
         this.diameter = diameter;
         this.radius = diameter / 2;
-        this.color = [Math.random() * 205 + 50, Math.random() * 205 + 50, Math.random() * 205 + 50]; // Initial RGB
-        this.targetColor = [Math.random() * 255, Math.random() * 255, Math.random() * 255]; // Target RGB
+        this.hue = Math.random() * 360; // Start with a random hue value between 0 and 360
+        this.saturation = 100; // Full saturation for vibrant colors
+        this.lightness = 50; // Medium lightness for balanced colors
 
         this.speed = speedFactor;
 
@@ -70,29 +71,22 @@
             this.y = canvas.height - this.radius;
         }
 
-        // Color fading towards target color
-        for (let i = 0; i < 3; i++) {
-            if (this.color[i] < this.targetColor[i]) {
-                this.color[i] = Math.min(this.color[i] + 0.5, this.targetColor[i]);
-            } else if (this.color[i] > this.targetColor[i]) {
-                this.color[i] = Math.max(this.color[i] - 0.5, this.targetColor[i]);
-            }
-        }
-
-        // Check if the target color is reached, and pick a new random target color
-        if (this.color.every((c, index) => Math.abs(c - this.targetColor[index]) < 1)) {
-            this.targetColor = [Math.random() * 255, Math.random() * 255, Math.random() * 255];
+        // Increment the hue to cycle through colors
+        this.hue += 0.5; // Adjust this value for faster or slower cycling
+        if (this.hue >= 360) {
+            this.hue -= 360; // Keep hue in the range 0–360
         }
     }
 
     draw() {
-        ctx.fillStyle = `rgb(${Math.round(this.color[0])}, ${Math.round(this.color[1])}, ${Math.round(this.color[2])})`;
+        ctx.fillStyle = `hsl(${Math.round(this.hue)}, ${this.saturation}%, ${this.lightness}%)`;
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
         ctx.fill();
         ctx.closePath();
     }
 }
+
 
    function loadBallsFromData(data) {
     const today = new Date();
