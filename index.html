@@ -18,176 +18,162 @@
 <body>
     <canvas id="ballCanvas"></canvas>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
-<script>
-    const canvas = document.getElementById('ballCanvas');
-    const ctx = canvas.getContext('2d');
-    canvas.width = window.innerWidth || document.documentElement.clientWidth;
-    canvas.height = window.innerHeight || document.documentElement.clientHeight;
+    <script>
+        const canvas = document.getElementById('ballCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth || document.documentElement.clientWidth;
+        canvas.height = window.innerHeight || document.documentElement.clientHeight;
 
-    const MAX_DIAMETER = 200;
-    const MIN_DIAMETER = 10;
-    const MAX_AMOUNT = 5000000;
-    const MIN_AMOUNT = 1000;
-    const DATE_RANGE = 30;
-    const SPEED_FACTORS = [5, 4.25, 3.5, 2.75, 2, 1.25, 0.5, 0.25];
-    const balls = [];
+        const MAX_DIAMETER = 200;
+        const MIN_DIAMETER = 10;
+        const MAX_AMOUNT = 5000000;
+        const MIN_AMOUNT = 1000;
+        const DATE_RANGE = 30;
+        const SPEED_FACTORS = [5, 4.25, 3.5, 2.75, 2, 1.25, 0.5, 0.25];
+        const balls = [];
 
-    class Ball {
-    constructor(x, y, diameter, speedFactor) {
-        this.x = x;
-        this.y = y;
-        this.diameter = diameter;
-        this.radius = diameter / 2;
-        this.hue = Math.random() * 360; // Start with a random hue value between 0 and 360
-        this.saturation = 100; // Full saturation for vibrant colors
-        this.lightness = 50; // Medium lightness for balanced colors
+        class Ball {
+            constructor(x, y, diameter, speedFactor) {
+                this.x = x;
+                this.y = y;
+                this.diameter = diameter;
+                this.radius = diameter / 2;
+                this.hue = Math.random() * 360; // Start with a random hue value between 0 and 360
+                this.saturation = 100; // Full saturation for vibrant colors
+                this.lightness = 50; // Medium lightness for balanced colors
 
-        this.speed = speedFactor;
+                this.speed = speedFactor;
 
-        const angle = Math.random() * 2 * Math.PI;
-        this.velocityX = this.speed * Math.cos(angle);
-        this.velocityY = this.speed * Math.sin(angle);
-    }
-
-    update() {
-        // Update position based on velocity
-        this.x += this.velocityX;
-        this.y += this.velocityY;
-
-        // Boundary collision - reflect direction
-        if (this.x - this.radius < 0) {
-            this.velocityX = Math.abs(this.velocityX);
-            this.x = this.radius;
-        } else if (this.x + this.radius > canvas.width) {
-            this.velocityX = -Math.abs(this.velocityX);
-            this.x = canvas.width - this.radius;
-        }
-
-        if (this.y - this.radius < 0) {
-            this.velocityY = Math.abs(this.velocityY);
-            this.y = this.radius;
-        } else if (this.y + this.radius > canvas.height) {
-            this.velocityY = -Math.abs(this.velocityY);
-            this.y = canvas.height - this.radius;
-        }
-
-        // Increment the hue to cycle through colors
-        this.hue += 0.5; // Adjust this value for faster or slower cycling
-        if (this.hue >= 360) {
-            this.hue -= 360; // Keep hue in the range 0–360
-        }
-    }
-
-    draw() {
-        ctx.fillStyle = `hsl(${Math.round(this.hue)}, ${this.saturation}%, ${this.lightness}%)`;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.closePath();
-    }
-}
-
-
-   function loadBallsFromData(data) {
-    const today = new Date();
-    data.forEach(record => {
-        try {
-            // Parse the date field safely
-            if (!record.Date) {
-                console.warn('Skipping record due to missing date:', record);
-                return;
-            }
-            const date = new Date(Date.parse(record.Date));
-            const daysOld = Math.floor((today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-            if (daysOld > DATE_RANGE) {
-                console.log('Skipping record due to date range:', record);
-                return;
+                const angle = Math.random() * 2 * Math.PI;
+                this.velocityX = this.speed * Math.cos(angle);
+                this.velocityY = this.speed * Math.sin(angle);
             }
 
-            // Parse the amount safely
-            const amountField = record[" Amount "] || record.Amount || record.amount; // Handle different possible field names
-            if (!amountField) {
-                console.warn('Skipping record due to missing amount:', record);
-                return;
-            }
-            const amount = parseFloat(amountField.replace(/[$,]/g, ''));
-            if (isNaN(amount)) {
-                console.warn('Skipping record due to invalid amount:', record);
-                return;
-            }
+            update() {
+                // Update position based on velocity
+                this.x += this.velocityX;
+                this.y += this.velocityY;
 
-            const diameter = Math.max(MIN_DIAMETER, Math.min(MAX_DIAMETER,
-                ((amount - MIN_AMOUNT) / (MAX_AMOUNT - MIN_AMOUNT)) * (MAX_DIAMETER - MIN_DIAMETER) + MIN_DIAMETER));
-            const speedFactor = SPEED_FACTORS[Math.min(daysOld, DATE_RANGE)];
+                // Boundary collision - reflect direction
+                if (this.x - this.radius < 0) {
+                    this.velocityX = Math.abs(this.velocityX);
+                    this.x = this.radius;
+                } else if (this.x + this.radius > canvas.width) {
+                    this.velocityX = -Math.abs(this.velocityX);
+                    this.x = canvas.width - this.radius;
+                }
 
-            const x = Math.random() * (canvas.width - 200) + 100;
-            const y = Math.random() * (canvas.height - 200) + 100;
-            balls.push(new Ball(x, y, diameter, speedFactor));
+                if (this.y - this.radius < 0) {
+                    this.velocityY = Math.abs(this.velocityY);
+                    this.y = this.radius;
+                } else if (this.y + this.radius > canvas.height) {
+                    this.velocityY = -Math.abs(this.velocityY);
+                    this.y = canvas.height - this.radius;
+                }
 
-        } catch (e) {
-            console.error("Error processing record: ", record, e);
-        }
-    });
-}
-
-
-
-    function handleCollisions() {
-        for (let i = 0; i < balls.length; i++) {
-            const ball1 = balls[i];
-            for (let j = i + 1; j < balls.length; j++) {
-                const ball2 = balls[j];
-                const dx = ball2.x - ball1.x;
-                const dy = ball2.y - ball1.y;
-                const distance = Math.hypot(dx, dy);
-
-                if (distance < ball1.radius + ball2.radius) {
-                    const angle = Math.atan2(dy, dx);
-                    ball1.velocityX = -ball1.speed * Math.cos(angle);
-                    ball1.velocityY = -ball1.speed * Math.sin(angle);
-                    ball2.velocityX = ball2.speed * Math.cos(angle);
-                    ball2.velocityY = ball2.speed * Math.sin(angle);
+                // Increment the hue to cycle through colors
+                this.hue += 0.5; // Adjust this value for faster or slower cycling
+                if (this.hue >= 360) {
+                    this.hue -= 360; // Keep hue in the range 0–360
                 }
             }
+
+            draw() {
+                // Create a 3D-like effect using radial gradient
+                const gradient = ctx.createRadialGradient(
+                    this.x - this.radius / 4, 
+                    this.y - this.radius / 4, 
+                    this.radius / 8, 
+                    this.x, 
+                    this.y, 
+                    this.radius
+                );
+                gradient.addColorStop(0, `hsl(${Math.round(this.hue)}, ${this.saturation}%, ${this.lightness + 20}%)`);
+                gradient.addColorStop(1, `hsl(${Math.round(this.hue)}, ${this.saturation}%, ${this.lightness - 20}%)`);
+
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.closePath();
+            }
         }
-    }
 
-    function animate() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        balls.forEach(ball => {
-            ball.update();
-            ball.draw();
-        });
-        handleCollisions();
-        requestAnimationFrame(animate);
-    }
+        function loadBallsFromData(data) {
+            const today = new Date();
+            data.forEach(record => {
+                try {
+                    // Parse the date field safely
+                    if (!record.Date) {
+                        console.warn('Skipping record due to missing date:', record);
+                        return;
+                    }
+                    const date = new Date(Date.parse(record.Date));
+                    const daysOld = Math.floor((today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+                    if (daysOld > DATE_RANGE) {
+                        console.log('Skipping record due to date range:', record);
+                        return;
+                    }
 
-window.onload = () => {
-   fetch('https://gabledatavisual.blob.core.windows.net/data/data.csv')
-       .then(response => {
-           if (!response.ok) {
-               throw new Error(`HTTP error! status: ${response.status}`);
-           }
-           return response.text();
-       })
-       .then(csvText => {
-           Papa.parse(csvText, {
-               header: true,
-               skipEmptyLines: true,
-               complete: (results) => {
-                   console.log('Parsed CSV Data:', results.data);
-                   loadBallsFromData(results.data);
-                   animate();  // Start the animation directly
-               },
-               error: (error) => {
-                   console.error('Error parsing CSV:', error);
-               }
-           });
-       })
-       .catch(error => console.error('Error fetching CSV:', error));
-};
+                    // Parse the amount safely
+                    const amountField = record[" Amount "] || record.Amount || record.amount; // Handle different possible field names
+                    if (!amountField) {
+                        console.warn('Skipping record due to missing amount:', record);
+                        return;
+                    }
+                    const amount = parseFloat(amountField.replace(/[$,]/g, ''));
+                    if (isNaN(amount)) {
+                        console.warn('Skipping record due to invalid amount:', record);
+                        return;
+                    }
 
+                    const diameter = Math.max(MIN_DIAMETER, Math.min(MAX_DIAMETER,
+                        ((amount - MIN_AMOUNT) / (MAX_AMOUNT - MIN_AMOUNT)) * (MAX_DIAMETER - MIN_DIAMETER) + MIN_DIAMETER));
+                    const speedFactor = SPEED_FACTORS[Math.min(daysOld, DATE_RANGE)];
 
-</script>
+                    const x = Math.random() * (canvas.width - 200) + 100;
+                    const y = Math.random() * (canvas.height - 200) + 100;
+                    balls.push(new Ball(x, y, diameter, speedFactor));
+
+                } catch (e) {
+                    console.error("Error processing record: ", record, e);
+                }
+            });
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            balls.forEach(ball => {
+                ball.update();
+                ball.draw();
+            });
+            requestAnimationFrame(animate);
+        }
+
+        window.onload = () => {
+            fetch('https://gabledatavisual.blob.core.windows.net/data/data.csv')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.text();
+                })
+                .then(csvText => {
+                    Papa.parse(csvText, {
+                        header: true,
+                        skipEmptyLines: true,
+                        complete: (results) => {
+                            console.log('Parsed CSV Data:', results.data);
+                            loadBallsFromData(results.data);
+                            animate();  // Start the animation directly
+                        },
+                        error: (error) => {
+                            console.error('Error parsing CSV:', error);
+                        }
+                    });
+                })
+                .catch(error => console.error('Error fetching CSV:', error));
+        };
+    </script>
 </body>
 </html>
