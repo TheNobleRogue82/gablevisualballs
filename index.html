@@ -79,23 +79,26 @@
             }
 
             draw() {
-                // Create a 3D-like effect using radial gradient
-                const gradient = ctx.createRadialGradient(
-                    this.x - this.radius / 4, 
-                    this.y - this.radius / 4, 
-                    this.radius / 8, 
-                    this.x, 
-                    this.y, 
-                    this.radius
-                );
-                gradient.addColorStop(0, `hsl(${Math.round(this.hue)}, ${this.saturation}%, ${this.lightness + 20}%)`);
-                gradient.addColorStop(1, `hsl(${Math.round(this.hue)}, ${this.saturation}%, ${this.lightness - 20}%)`);
+                // Ensure valid values for gradient to avoid non-finite errors
+                if (isFinite(this.x) && isFinite(this.y) && isFinite(this.radius)) {
+                    // Create a 3D-like effect using radial gradient
+                    const gradient = ctx.createRadialGradient(
+                        this.x - this.radius / 4, 
+                        this.y - this.radius / 4, 
+                        Math.max(this.radius / 8, 0), 
+                        this.x, 
+                        this.y, 
+                        Math.max(this.radius, 0)
+                    );
+                    gradient.addColorStop(0, `hsl(${Math.round(this.hue)}, ${this.saturation}%, ${this.lightness + 20}%)`);
+                    gradient.addColorStop(1, `hsl(${Math.round(this.hue)}, ${this.saturation}%, ${this.lightness - 20}%)`);
 
-                ctx.fillStyle = gradient;
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.closePath();
+                    ctx.fillStyle = gradient;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.closePath();
+                }
             }
         }
 
