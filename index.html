@@ -87,7 +87,6 @@
     }
 }
 
-
    function loadBallsFromData(data) {
     const today = new Date();
     data.forEach(record => {
@@ -163,7 +162,7 @@
     }
 
 window.onload = () => {
-   fetch('https://gabledatavisual.blob.core.windows.net/data/data.csv')
+   fetch('https://corsproxy.io/?https://gablecompany-my.sharepoint.com/:x:/p/richgue/EQ932QnC_JVJpoXVdXWjkfcBbj-mu23sw0-0vACer05qHA?e=6PNRC0')
        .then(response => {
            if (!response.ok) {
                throw new Error(`HTTP error! status: ${response.status}`);
