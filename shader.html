@@ -105,6 +105,14 @@
                 } else {
                     console.log('Unable to get WebGL debug information.');
                 }
+            } else {
+                console.error('WebGL initialization failed after all attempts. Falling back to 2D context.');
+                // Verify if canvas is properly set up for 2D rendering
+                if (ctx) {
+                    console.log('2D context successfully initialized as fallback.');
+                } else {
+                    console.error('Failed to initialize 2D context as fallback. Check canvas setup.');
+                }
             }
         }
 
