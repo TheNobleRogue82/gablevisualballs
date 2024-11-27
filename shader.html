@@ -7,7 +7,7 @@
     <style>
         @font-face {
             font-family: 'DINOT';
-            src: url('https://example.com/DINOT-Regular.woff2') format('woff2'); /* Updated URL for font */
+            src: url('https://drive.google.com/uc?export=download&id=1kcB1mt8gKlHnEvz8GjJ3d_tx5qxwGaZP') format('woff2'); /* Updated URL for font */
         }
         body {
             margin: 0;
@@ -45,7 +45,7 @@
                 this.diameter = diameter;
                 this.radius = diameter / 2;
                 this.orbitAngle = orbitAngle;
-                this.orbitRadius = orbitRadius;
+                this.orbitRadius = orbitRadius * (0.5 + Math.random()); // Randomize distance from the center for more variation
                 this.orbitSpeed = speedFactor * 0.001; // Adjust speed factor to control orbit speed
                 this.brightness = 50; // Initial brightness
             }
@@ -78,9 +78,7 @@
                     ctx.shadowBlur = 0;
                     // Add inner glow effect
                     ctx.globalCompositeOperation = 'lighter';
-                    ctx.shadowBlur = 10;
-                    ctx.shadowColor = 'rgba(135, 206, 250, 0.5)';
-                    ctx.fill();
+                    // Removed excessive inner glow
                     ctx.shadowBlur = 0;
                     ctx.globalCompositeOperation = 'source-over'; // Reset shadowBlur after drawing
                 }
