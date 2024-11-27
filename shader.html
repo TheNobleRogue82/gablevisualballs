@@ -62,40 +62,21 @@
         const canvas = document.getElementById('ballCanvas');
         let gl = null;
         let ctx = canvas.getContext('2d');
-        canvas.width = window.innerWidth || document.documentElement.clientWidth;
-        canvas.height = window.innerHeight || document.documentElement.clientHeight;
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
 
-        // Attempt to get WebGL 2.0 context
-        try {
-            gl = canvas.getContext('webgl2', {
-                antialias: true,
-                alpha: false,
-                depth: true,
-                stencil: false,
-                preserveDrawingBuffer: false,
-                powerPreference: 'high-performance'
-            });
-            if (gl) {
-                console.log('WebGL2 context successfully initialized.');
-            } else {
-                console.warn('WebGL2 not supported, attempting WebGL1 context.');
-                // Attempt to get WebGL 1.0 context as a fallback
-                gl = canvas.getContext('webgl', {
-                    antialias: true,
-                    alpha: false,
-                    depth: true,
-                    stencil: false,
-                    preserveDrawingBuffer: false,
-                    powerPreference: 'high-performance'
-                });
+        // Initialize WebGL context
+        function initializeWebGL() {
+            try {
+                gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
                 if (gl) {
-                    console.log('WebGL1 context successfully initialized as a fallback.');
+                    console.log('WebGL context successfully initialized.');
                 } else {
-                    console.error('WebGL not supported on this device. Falling back to Canvas 2D rendering.');
+                    console.error('WebGL not supported. Falling back to Canvas 2D rendering.');
                 }
+            } catch (e) {
+                console.error('Error initializing WebGL:', e);
             }
-        } catch (e) {
-            console.error('Error initializing WebGL:', e);
         }
 
         let nebulaProgram;
@@ -106,25 +87,10 @@
             const vertexShaderSource = document.getElementById('vertex-shader').text;
             const fragmentShaderSource = document.getElementById('nebula-shader').text;
 
-            // Compile vertex shader
-            const vertexShader = gl.createShader(gl.VERTEX_SHADER);
-            gl.shaderSource(vertexShader, vertexShaderSource);
-            gl.compileShader(vertexShader);
-            if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)) {
-                console.error('Vertex Shader compilation error:', gl.getShaderInfoLog(vertexShader));
-                return;
-            }
+            const vertexShader = compileShader(gl.VERTEX_SHADER, vertexShaderSource);
+            const fragmentShader = compileShader(gl.FRAGMENT_SHADER, fragmentShaderSource);
+            if (!vertexShader || !fragmentShader) return;
 
-            // Compile fragment shader
-            const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
-            gl.shaderSource(fragmentShader, fragmentShaderSource);
-            gl.compileShader(fragmentShader);
-            if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) {
-                console.error('Fragment Shader compilation error:', gl.getShaderInfoLog(fragmentShader));
-                return;
-            }
-
-            // Link shaders into a program
             nebulaProgram = gl.createProgram();
             gl.attachShader(nebulaProgram, vertexShader);
             gl.attachShader(nebulaProgram, fragmentShader);
@@ -135,6 +101,17 @@
             }
 
             gl.useProgram(nebulaProgram);
+        }
+
+        function compileShader(type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error(`${type === gl.VERTEX_SHADER ? 'Vertex' : 'Fragment'} Shader compilation error:`, gl.getShaderInfoLog(shader));
+                return null;
+            }
+            return shader;
         }
 
         const MAX_DIAMETER = 4000;
@@ -163,18 +140,12 @@
             }
 
             draw() {
-                if (!isFinite(this.x) || !isFinite(this.y) || !isFinite(this.radius) || this.radius <= 0) {
-                    console.warn('Skipping ball draw due to non-finite values:', this);
-                    return;
-                }
+                if (!isFinite(this.x) || !isFinite(this.y) || !isFinite(this.radius) || this.radius <= 0) return;
 
                 ctx.beginPath();
-                const gradient = ctx.createRadialGradient(
-                    this.x, this.y, 0,
-                    this.x, this.y, this.radius
-                );
-                gradient.addColorStop(0, 'rgba(173, 216, 230, 1)'); // Light blue center
-                gradient.addColorStop(1, 'rgba(0, 191, 255, 0)');   // Transparent edge
+                const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.radius);
+                gradient.addColorStop(0, 'rgba(173, 216, 230, 1)');
+                gradient.addColorStop(1, 'rgba(0, 191, 255, 0)');
                 ctx.fillStyle = gradient;
                 ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
                 ctx.fill();
@@ -186,32 +157,15 @@
             const today = new Date();
             data.forEach(record => {
                 try {
-                    if (!record.Date) {
-                        console.warn('Skipping record due to missing date:', record);
-                        return;
-                    }
-                    const date = new Date(Date.parse(record.Date));
-                    const daysOld = Math.floor((today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-                    if (daysOld > DATE_RANGE) {
-                        console.log('Skipping record due to date range:', record);
-                        return;
-                    }
+                    const date = record.Date ? new Date(Date.parse(record.Date)) : null;
+                    if (!date || (today - date) / (1000 * 60 * 60 * 24) > DATE_RANGE) return;
 
-                    const amountField = record[" Amount "] || record.Amount || record.amount;
-                    if (!amountField) {
-                        console.warn('Skipping record due to missing amount:', record);
-                        return;
-                    }
-                    const amount = parseFloat(amountField.replace(/[$,]/g, ''));
-                    if (isNaN(amount) || amount < 1000) {
-                        console.warn('Skipping record due to invalid or insufficient amount:', record);
-                        return;
-                    }
+                    const amount = parseFloat((record[" Amount "] || record.Amount || record.amount || '').replace(/[$,]/g, ''));
+                    if (isNaN(amount) || amount < MIN_AMOUNT) return;
 
                     const diameter = Math.max(MIN_DIAMETER, Math.min(MAX_DIAMETER,
                         ((amount - MIN_AMOUNT) / (MAX_AMOUNT - MIN_AMOUNT)) * (MAX_DIAMETER - MIN_DIAMETER) + MIN_DIAMETER));
-                    const speedFactorIndex = Math.min(daysOld, SPEED_FACTORS.length - 1);
-                    const speedFactor = SPEED_FACTORS[speedFactorIndex] || 1; // Default to 1 if undefined
+                    const speedFactor = SPEED_FACTORS[Math.min(Math.floor((today - date) / (1000 * 60 * 60 * 24)), SPEED_FACTORS.length - 1)] || 1;
 
                     balls.push(new Ball(0, 0, diameter, speedFactor));
 
@@ -237,53 +191,36 @@
 
         function refreshData() {
             fetch('https://gabledatavisual.blob.core.windows.net/data/data.csv')
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.text();
-                })
+                .then(response => response.ok ? response.text() : Promise.reject(`HTTP error! status: ${response.status}`))
                 .then(csvText => {
                     Papa.parse(csvText, {
                         header: true,
                         skipEmptyLines: true,
-                        complete: (results) => {
-                            console.log('Parsed CSV Data:', results.data);
+                        complete: results => {
                             balls.length = 0;
                             loadBallsFromData(results.data);
                         },
-                        error: (error) => {
-                            console.error('Error parsing CSV:', error);
-                        }
+                        error: error => console.error('Error parsing CSV:', error)
                     });
                 })
                 .catch(error => console.error('Error fetching CSV:', error));
         }
 
         window.onload = () => {
-            if (gl) {
-                initNebulaShader();
-            }
+            initializeWebGL();
+            if (gl) initNebulaShader();
 
             fetch('https://gabledatavisual.blob.core.windows.net/data/data.csv')
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.text();
-                })
+                .then(response => response.ok ? response.text() : Promise.reject(`HTTP error! status: ${response.status}`))
                 .then(csvText => {
                     Papa.parse(csvText, {
                         header: true,
                         skipEmptyLines: true,
-                        complete: (results) => {
-                            console.log('Parsed CSV Data:', results.data);
+                        complete: results => {
                             loadBallsFromData(results.data);
                             animate();
                         },
-                        error: (error) => {
-                            console.error('Error parsing CSV:', error);
-                        }
+                        error: error => console.error('Error parsing CSV:', error)
                     });
                 })
                 .catch(error => console.error('Error fetching CSV:', error));
