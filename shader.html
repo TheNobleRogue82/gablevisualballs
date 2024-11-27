@@ -68,11 +68,20 @@
         // Initialize WebGL context
         function initializeWebGL() {
             try {
-                gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+                // Attempt to get WebGL2 context first
+                gl = canvas.getContext('webgl2');
+                if (!gl) {
+                    console.warn('WebGL2 not supported, attempting WebGL1 context.');
+                    gl = canvas.getContext('webgl');
+                }
+                if (!gl) {
+                    console.warn('WebGL1 not supported, attempting experimental-webgl context.');
+                    gl = canvas.getContext('experimental-webgl');
+                }
                 if (gl) {
                     console.log('WebGL context successfully initialized.');
                 } else {
-                    console.error('WebGL not supported. Falling back to Canvas 2D rendering.');
+                    console.error('WebGL not supported on this device. Falling back to Canvas 2D rendering.');
                 }
             } catch (e) {
                 console.error('Error initializing WebGL:', e);
