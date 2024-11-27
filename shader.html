@@ -140,6 +140,11 @@
             }
 
             draw() {
+                if (!isFinite(this.x) || !isFinite(this.y) || !isFinite(this.radius) || this.radius <= 0) {
+                    console.warn('Skipping ball draw due to non-finite values:', this);
+                    return;
+                }
+
                 ctx.beginPath();
                 const gradient = ctx.createRadialGradient(
                     this.x, this.y, 0,
