@@ -140,12 +140,13 @@
         const balls = [];
 
         class Ball {
-            constructor(x, y, diameter, speedFactor) {
+            constructor(x, y, diameter, speedFactor, brightnessFactor) {
                 this.x = x;
                 this.y = y;
                 this.diameter = diameter;
                 this.radius = diameter / 2;
                 this.speed = speedFactor;
+                this.brightnessFactor = brightnessFactor;
                 this.angle = Math.random() * 2 * Math.PI;
                 this.orbitRadius = Math.random() * (canvas.width / 3) + 100;
             }
@@ -161,7 +162,8 @@
 
                 ctx.beginPath();
                 const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.radius);
-                gradient.addColorStop(0, 'rgba(173, 216, 230, 1)');
+                gradient.addColorStop(0, `rgba(255, 255, 255, ${this.brightnessFactor})`);
+                gradient.addColorStop(0.4, `rgba(173, 216, 230, ${this.brightnessFactor * 0.8})`);
                 gradient.addColorStop(1, 'rgba(0, 191, 255, 0)');
                 ctx.fillStyle = gradient;
                 ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
@@ -183,8 +185,9 @@
                     const diameter = Math.max(MIN_DIAMETER, Math.min(MAX_DIAMETER,
                         ((amount - MIN_AMOUNT) / (MAX_AMOUNT - MIN_AMOUNT)) * (MAX_DIAMETER - MIN_DIAMETER) + MIN_DIAMETER));
                     const speedFactor = SPEED_FACTORS[Math.min(Math.floor((today - date) / (1000 * 60 * 60 * 24)), SPEED_FACTORS.length - 1)] || 1;
+                    const brightnessFactor = 1 - Math.min((today - date) / (1000 * 60 * 60 * 24 * DATE_RANGE), 0.8);
 
-                    balls.push(new Ball(0, 0, diameter, speedFactor));
+                    balls.push(new Ball(0, 0, diameter, speedFactor, brightnessFactor));
 
                 } catch (e) {
                     console.error("Error processing record: ", record, e);
