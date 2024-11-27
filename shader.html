@@ -21,20 +21,12 @@
 </head>
 <body>
     <canvas id="ballCanvas"></canvas>
-    <img id="logo" src="/mnt/data/Gable_Blue_Flag_Favicon.png" style="display: none;" alt="Gable Logo">
     <script>
         const canvas = document.getElementById('ballCanvas');
         const ctx = canvas.getContext('2d');
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
 
-        const logo = document.getElementById('logo');
-
-        const MAX_DIAMETER = 4000;
-        const MIN_DIAMETER = 10;
-        const MAX_AMOUNT = 5000000;
-        const MIN_AMOUNT = 1000;
-        const DATE_RANGE = 30;
         const SPEED_FACTORS = [10, 9, 7, 5.5, 4, 2.5, 1, 0.5];
         const balls = [];
 
@@ -71,27 +63,44 @@
             }
         }
 
-        function loadBallsFromData(data) {
-            const today = new Date();
-            data.forEach(record => {
-                try {
-                    const date = record.Date ? new Date(Date.parse(record.Date)) : null;
-                    if (!date || (today - date) / (1000 * 60 * 60 * 24) > DATE_RANGE) return;
+        function loadStaticBalls() {
+            // Creating static balls for demonstration purposes
+            for (let i = 0; i < 10; i++) {
+                const diameter = Math.random() * 50 + 20;
+                const speedFactor = SPEED_FACTORS[Math.floor(Math.random() * SPEED_FACTORS.length)];
+                const brightnessFactor = Math.random() * 0.8 + 0.2;
+                balls.push(new Ball(0, 0, diameter, speedFactor, brightnessFactor));
+            }
+        }
 
-                    const amount = parseFloat((record[" Amount "] || record.Amount || record.amount || '').replace(/[$,]/g, ''));
-                    if (isNaN(amount) || amount < MIN_AMOUNT) return;
+        function drawLogo(centerX, centerY) {
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            ctx.fillStyle = '#004A9F'; // Blue color for the background
+            ctx.beginPath();
+            ctx.moveTo(-50, -50);
+            ctx.lineTo(50, -50);
+            ctx.lineTo(50, 50);
+            ctx.lineTo(-50, 50);
+            ctx.closePath();
+            ctx.fill();
 
-                    const diameter = Math.max(MIN_DIAMETER, Math.min(MAX_DIAMETER,
-                        ((amount - MIN_AMOUNT) / (MAX_AMOUNT - MIN_AMOUNT)) * (MAX_DIAMETER - MIN_DIAMETER) + MIN_DIAMETER));
-                    const speedFactor = SPEED_FACTORS[Math.min(Math.floor((today - date) / (1000 * 60 * 60 * 24)), SPEED_FACTORS.length - 1)] || 1;
-                    const brightnessFactor = 1 - Math.min((today - date) / (1000 * 60 * 60 * 24 * DATE_RANGE), 0.8);
-
-                    balls.push(new Ball(0, 0, diameter, speedFactor, brightnessFactor));
-
-                } catch (e) {
-                    console.error("Error processing record: ", record, e);
-                }
-            });
+            // Draw the letter 'G'
+            ctx.fillStyle = '#FFFFFF'; // White color for the letter
+            ctx.beginPath();
+            ctx.moveTo(-20, -25);
+            ctx.lineTo(20, -25);
+            ctx.arcTo(30, -25, 30, -15, 10);
+            ctx.lineTo(30, 0);
+            ctx.lineTo(0, 0);
+            ctx.lineTo(0, 10);
+            ctx.lineTo(20, 10);
+            ctx.arcTo(30, 10, 30, 25, 10);
+            ctx.lineTo(20, 25);
+            ctx.lineTo(-20, 25);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
         }
 
         function animate() {
@@ -115,47 +124,15 @@
             ctx.fill();
             ctx.closePath();
 
-            // Draw the logo image
-            const logoSize = 100;
-            ctx.drawImage(logo, centerX - logoSize / 2, centerY - logoSize / 2, logoSize, logoSize);
+            // Draw the logo using vector graphics
+            drawLogo(centerX, centerY);
 
             requestAnimationFrame(animate);
         }
 
-        function refreshData() {
-            fetch('https://gabledatavisual.blob.core.windows.net/data/data.csv')
-                .then(response => response.ok ? response.text() : Promise.reject(`HTTP error! status: ${response.status}`))
-                .then(csvText => {
-                    Papa.parse(csvText, {
-                        header: true,
-                        skipEmptyLines: true,
-                        complete: results => {
-                            balls.length = 0;
-                            loadBallsFromData(results.data);
-                        },
-                        error: error => console.error('Error parsing CSV:', error)
-                    });
-                })
-                .catch(error => console.error('Error fetching CSV:', error));
-        }
-
         window.onload = () => {
-            fetch('https://gabledatavisual.blob.core.windows.net/data/data.csv')
-                .then(response => response.ok ? response.text() : Promise.reject(`HTTP error! status: ${response.status}`))
-                .then(csvText => {
-                    Papa.parse(csvText, {
-                        header: true,
-                        skipEmptyLines: true,
-                        complete: results => {
-                            loadBallsFromData(results.data);
-                            animate();
-                        },
-                        error: error => console.error('Error parsing CSV:', error)
-                    });
-                })
-                .catch(error => console.error('Error fetching CSV:', error));
-
-            setInterval(refreshData, 3 * 60 * 1000);
+            loadStaticBalls();
+            animate();
         };
     </script>
 </body>
