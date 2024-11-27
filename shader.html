@@ -65,40 +65,63 @@
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
 
-        // Initialize WebGL context by only attempting 'webgl'
-function initializeWebGL() {
-    try {
-        // Attempt to get WebGL context
-        gl = canvas.getContext('webgl');
-        if (!gl) {
-            console.error('WebGL not supported on this device. Falling back to Canvas 2D rendering.');
-        } else {
-            console.log('WebGL context successfully initialized.');
+        // Function to check if the browser supports WebGL
+        function isWebGLSupported() {
+            try {
+                const testCanvas = document.createElement('canvas');
+                const testContext = testCanvas.getContext('webgl') || testCanvas.getContext('experimental-webgl');
+                return !!testContext;
+            } catch (e) {
+                return false;
+            }
         }
-    } catch (e) {
-        console.error('Error initializing WebGL:', e);
-    }
 
-    if (gl) {
-        const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
-        if (debugInfo) {
-            const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
-            const vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL);
-            console.log(`Renderer: ${renderer}`);
-            console.log(`Vendor: ${vendor}`);
-        } else {
-            console.log('Unable to get WebGL debug information.');
+        // Initialize WebGL context by attempting 'webgl' with explicit attributes
+        function initializeWebGL() {
+            if (!isWebGLSupported()) {
+                console.error('WebGL is not supported in this browser. Falling back to Canvas 2D rendering.');
+                return;
+            }
+
+            try {
+                // Attempt to get WebGL context with explicit attributes
+                const attributes = {
+                    alpha: false,
+                    depth: true,
+                    stencil: false,
+                    antialias: true,
+                    preserveDrawingBuffer: false
+                };
+                gl = canvas.getContext('webgl', attributes);
+                if (!gl) {
+                    console.error('WebGL not supported on this device. Falling back to Canvas 2D rendering.');
+                } else {
+                    console.log('WebGL context successfully initialized.');
+                }
+            } catch (e) {
+                console.error('Error initializing WebGL:', e);
+            }
+
+            if (gl) {
+                const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                if (debugInfo) {
+                    const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+                    const vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL);
+                    console.log(`Renderer: ${renderer}`);
+                    console.log(`Vendor: ${vendor}`);
+                } else {
+                    console.log('Unable to get WebGL debug information.');
+                }
+            } else {
+                console.error('WebGL initialization failed after all attempts. Falling back to 2D context.');
+                // Verify if canvas is properly set up for 2D rendering
+                if (ctx) {
+                    console.log('2D context successfully initialized as fallback.');
+                } else {
+                    console.error('Failed to initialize 2D context as fallback. Check canvas setup.');
+                }
+            }
         }
-    } else {
-        console.error('WebGL initialization failed after all attempts. Falling back to 2D context.');
-        // Verify if canvas is properly set up for 2D rendering
-        if (ctx) {
-            console.log('2D context successfully initialized as fallback.');
-        } else {
-            console.error('Failed to initialize 2D context as fallback. Check canvas setup.');
-        }
-    }
-}
 
         let nebulaProgram;
 
