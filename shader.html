@@ -7,7 +7,7 @@
     <style>
         @font-face {
             font-family: 'DINOT';
-            src: url('DINOT-Regular.woff2') format('woff2');
+            src: url('https://example.com/DINOT-Regular.woff2') format('woff2'); /* Updated URL for font */
         }
         body {
             margin: 0;
@@ -72,8 +72,8 @@
                     ctx.closePath();
 
                     // Draw the glow effect
-                    ctx.shadowBlur = Math.max(10, this.brightness);
-                    ctx.shadowColor = `rgba(173, 216, 230, ${this.brightness / 100})`;
+                    ctx.shadowBlur = Math.max(30, this.brightness * 2); // Increase shadowBlur for brighter glow
+                    ctx.shadowColor = `rgba(135, 206, 250, ${this.brightness / 100})`; // Bright blueish-white glow
                     ctx.fill();
                     ctx.shadowBlur = 0; // Reset shadowBlur after drawing
                 }
@@ -129,10 +129,13 @@
 
             // Draw the central "G" character
             ctx.font = "bold 200px DINOT";
-            ctx.fillStyle = "white";
+            ctx.fillStyle = "black";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
+            ctx.shadowBlur = 60; // Increase shadowBlur for brighter glow
+            ctx.shadowColor = "rgba(135, 206, 250, 1)"; // Bright blueish-white glow for "G"
             ctx.fillText("G", centerX, centerY);
+            ctx.shadowBlur = 0; // Reset shadowBlur after drawing
 
             // Draw and update all balls
             balls.forEach(ball => {
