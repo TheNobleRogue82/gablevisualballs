@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tremble's Pebbles</title>
     <style>
+        
+        @font-face {
+            font-family: 'FutoSansHeavy';
+            src: url('https://gabledatavisual.blob.core.windows.net/data/futo-sans-heavy.ttf') format('truetype');
+        }
         body {
             margin: 0;
             overflow: hidden;
@@ -32,72 +37,70 @@
         const SPEED_FACTORS = [10, 9, 7, 5.5, 4, 2.5, 1, 0.5];
         const balls = [];
 
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const orbitRadius = Math.min(canvas.width, canvas.height) / 3;
+
+        // Function to draw a starry background
+        const stars = [];
+        function initializeStars() {
+            const numStars = 200;
+            for (let i = 0; i < numStars; i++) {
+                const x = Math.random() * canvas.width;
+                const y = Math.random() * canvas.height;
+                const radius = Math.random() * 1.5;
+                stars.push({ x, y, radius });
+            }
+        }
+
+        function drawStars() {
+            ctx.fillStyle = 'white';
+            stars.forEach(star => {
+                ctx.beginPath();
+                ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.closePath();
+            });
+        }
+
+        initializeStars(); // Draw stars once during initialization // Reset alpha
+
         class Ball {
-            constructor(x, y, diameter, speedFactor) {
-                this.x = x;
-                this.y = y;
+            constructor(diameter, speedFactor, orbitAngle) {
                 this.diameter = diameter;
                 this.radius = diameter / 2;
-                this.hue = Math.random() * 360; // Start with a random hue value between 0 and 360
-                this.saturation = 100; // Full saturation for vibrant colors
-                this.lightness = 50; // Medium lightness for balanced colors
-
-                this.speed = speedFactor;
-
-                const angle = Math.random() * 2 * Math.PI;
-                this.velocityX = this.speed * Math.cos(angle);
-                this.velocityY = this.speed * Math.sin(angle);
+                this.orbitAngle = orbitAngle;
+                this.orbitRadius = orbitRadius * (0.5 + Math.random()); // Randomize distance from the center for more variation
+                this.orbitSpeed = speedFactor * 0.001; // Adjust speed factor to control orbit speed
+                this.brightness = 50; // Initial brightness
             }
 
             update() {
-                // Update position based on velocity
-                this.x += this.velocityX;
-                this.y += this.velocityY;
-
-                // Boundary collision - reflect direction
-                if (this.x - this.radius < 0) {
-                    this.velocityX = Math.abs(this.velocityX);
-                    this.x = this.radius;
-                } else if (this.x + this.radius > canvas.width) {
-                    this.velocityX = -Math.abs(this.velocityX);
-                    this.x = canvas.width - this.radius;
+                // Update orbit angle
+                this.orbitAngle += this.orbitSpeed;
+                if (this.orbitAngle >= 2 * Math.PI) {
+                    this.orbitAngle -= 2 * Math.PI;
                 }
 
-                if (this.y - this.radius < 0) {
-                    this.velocityY = Math.abs(this.velocityY);
-                    this.y = this.radius;
-                } else if (this.y + this.radius > canvas.height) {
-                    this.velocityY = -Math.abs(this.velocityY);
-                    this.y = canvas.height - this.radius;
-                }
-
-                // Increment the hue to cycle through colors
-                this.hue += 0.5; // Adjust this value for faster or slower cycling
-                if (this.hue >= 360) {
-                    this.hue -= 360; // Keep hue in the range 0–360
-                }
+                // Calculate new position based on orbit
+                this.x = centerX + this.orbitRadius * Math.cos(this.orbitAngle);
+                this.y = centerY + this.orbitRadius * Math.sin(this.orbitAngle);
             }
 
             draw() {
                 // Ensure valid values for gradient to avoid non-finite errors
                 if (isFinite(this.x) && isFinite(this.y) && isFinite(this.radius)) {
-                    // Create a 3D-like effect using radial gradient
-                    const gradient = ctx.createRadialGradient(
-                        this.x - this.radius / 4, 
-                        this.y - this.radius / 4, 
-                        Math.max(this.radius / 8, 0), 
-                        this.x, 
-                        this.y, 
-                        Math.max(this.radius, 0)
-                    );
-                    gradient.addColorStop(0, `hsl(${Math.round(this.hue)}, ${this.saturation}%, ${this.lightness + 20}%)`);
-                    gradient.addColorStop(1, `hsl(${Math.round(this.hue)}, ${this.saturation}%, ${this.lightness - 20}%)`);
-
-                    ctx.fillStyle = gradient;
+                    ctx.fillStyle = 'black';
                     ctx.beginPath();
                     ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.closePath();
+
+                    // Draw the glow effect
+                    ctx.shadowBlur = 30; // Increase shadowBlur for brighter glow effect
+                    ctx.shadowColor = `rgba(100, 149, 237, 4)`; // Make glow brighter // Bright blueish-white glow
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
                 }
             }
         }
@@ -133,10 +136,12 @@
                     const diameter = Math.max(MIN_DIAMETER, Math.min(MAX_DIAMETER,
                         ((amount - MIN_AMOUNT) / (MAX_AMOUNT - MIN_AMOUNT)) * (MAX_DIAMETER - MIN_DIAMETER) + MIN_DIAMETER));
                     const speedFactor = SPEED_FACTORS[Math.min(daysOld, DATE_RANGE)];
+                    const orbitAngle = Math.random() * 2 * Math.PI;
+                    const brightness = 100 - (daysOld * (100 / DATE_RANGE)); // Calculate brightness based on days old
 
-                    const x = Math.random() * (canvas.width - 200) + 100;
-                    const y = Math.random() * (canvas.height - 200) + 100;
-                    balls.push(new Ball(x, y, diameter, speedFactor));
+                    const ball = new Ball(diameter, speedFactor, orbitAngle);
+                    ball.brightness = brightness;
+                    balls.push(ball);
 
                 } catch (e) {
                     console.error("Error processing record: ", record, e);
@@ -146,6 +151,19 @@
 
         function animate() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawStars(); // Draw the static starry background
+
+            // Draw the central "G" character
+            ctx.font = "bold 100px FutoSansHeavy, Arial, sans-serif";
+            ctx.fillStyle = "black";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.shadowBlur = 20; // Reduce shadowBlur for the 'G' to create a more defined glow
+            ctx.shadowColor = "rgba(100, 149, 237, 2.5)"; // Bright blueish-white glow for 'G'
+            ctx.fillText("G", centerX, centerY);
+            ctx.shadowBlur = 0; // Reset shadowBlur after drawing
+
+            // Draw and update all balls
             balls.forEach(ball => {
                 ball.update();
                 ball.draw();
