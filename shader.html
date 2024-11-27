@@ -53,9 +53,9 @@
 
                 ctx.beginPath();
                 const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.radius);
-                gradient.addColorStop(0, `rgba(0, 0, 0, ${this.brightnessFactor})`);
-                gradient.addColorStop(0.4, `rgba(0, 191, 255, ${this.brightnessFactor * 0.8})`);
-                gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                gradient.addColorStop(0, `rgba(255, 255, 255, ${this.brightnessFactor})`);
+                gradient.addColorStop(0.4, `rgba(173, 216, 230, ${this.brightnessFactor * 0.8})`);
+                gradient.addColorStop(1, 'rgba(0, 191, 255, 0)');
                 ctx.fillStyle = gradient;
                 ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
                 ctx.fill();
@@ -66,7 +66,7 @@
         function loadStaticBalls() {
             // Creating static balls for demonstration purposes
             for (let i = 0; i < 10; i++) {
-                const diameter = Math.random() * 80 + 20; // Making sure balls have distinct sizes
+                const diameter = Math.random() * 3980 + 20; // Restoring the original diameter range
                 const speedFactor = SPEED_FACTORS[Math.floor(Math.random() * SPEED_FACTORS.length)];
                 const brightnessFactor = Math.random() * 0.8 + 0.2;
                 balls.push(new Ball(0, 0, diameter, speedFactor, brightnessFactor));
@@ -75,40 +75,11 @@
 
         function drawLogo(centerX, centerY) {
             ctx.save();
-            ctx.translate(centerX, centerY);
-
-            // Draw the blue background square
-            ctx.fillStyle = '#004A9F'; // Blue color for the background
-            ctx.beginPath();
-            ctx.rect(-50, -50, 100, 100);
-            ctx.fill();
-            ctx.closePath();
-
-            // Draw the letter 'G'
-            ctx.fillStyle = '#FFFFFF'; // White color for the letter
-            ctx.beginPath();
-            ctx.moveTo(-20, -25);
-            ctx.lineTo(20, -25);
-            ctx.arcTo(30, -25, 30, -15, 10);
-            ctx.lineTo(30, 15);
-            ctx.arcTo(30, 25, 20, 25, 10);
-            ctx.lineTo(-20, 25);
-            ctx.arcTo(-30, 25, -30, 15, 10);
-            ctx.lineTo(-30, -15);
-            ctx.arcTo(-30, -25, -20, -25, 10);
-            ctx.closePath();
-            ctx.fill();
-
-            // Erase the inner part to form the 'G'
-            ctx.fillStyle = '#004A9F';
-            ctx.beginPath();
-            ctx.moveTo(-10, -10);
-            ctx.lineTo(15, -10);
-            ctx.lineTo(15, 10);
-            ctx.lineTo(-10, 10);
-            ctx.closePath();
-            ctx.fill();
-
+            ctx.fillStyle = '#FFFFFF'; // White color for the letter G
+            ctx.font = 'bold 100px DINOT';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('G', centerX, centerY);
             ctx.restore();
         }
 
@@ -133,7 +104,7 @@
             ctx.fill();
             ctx.closePath();
 
-            // Draw the logo using vector graphics
+            // Draw the logo using text
             drawLogo(centerX, centerY);
 
             requestAnimationFrame(animate);
