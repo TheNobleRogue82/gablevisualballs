@@ -65,26 +65,18 @@
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
 
-        // Initialize WebGL context with explicit attributes
+        // Initialize WebGL context without explicit attributes for testing
         function initializeWebGL() {
             try {
-                const attributes = {
-                    alpha: false,
-                    depth: true,
-                    stencil: false,
-                    antialias: true,
-                    preserveDrawingBuffer: false
-                };
-
                 // Attempt to get WebGL2 context first
-                gl = canvas.getContext('webgl2', attributes);
+                gl = canvas.getContext('webgl2');
                 if (!gl) {
                     console.warn('WebGL2 not supported, attempting WebGL1 context.');
-                    gl = canvas.getContext('webgl', attributes);
+                    gl = canvas.getContext('webgl');
                 }
                 if (!gl) {
                     console.warn('WebGL1 not supported, attempting experimental-webgl context.');
-                    gl = canvas.getContext('experimental-webgl', attributes);
+                    gl = canvas.getContext('experimental-webgl');
                 }
                 if (gl) {
                     console.log('WebGL context successfully initialized.');
