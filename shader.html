@@ -5,11 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tremble's Pebbles</title>
     <style>
-        @font-face {
-            font-family: 'DINOT';
-            src: url('https://gabledatavisual.blob.core.windows.net/data/DINOT-Bold.woff2') format('woff2');
-            crossorigin: 'anonymous';
-        }
+        
         @font-face {
             font-family: 'DINOT';
             src: url('https://gabledatavisual.blob.core.windows.net/data/DINOT-Bold.woff2') format('woff2');
@@ -139,7 +135,7 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             // Draw the central "G" character
-            ctx.font = "bold 100px DINOT"; // Reduce size of the 'G'
+            ctx.font = "bold 100px DINOT, Arial, sans-serif"; // Added fallback fonts // Reduce size of the 'G'
             ctx.fillStyle = "black";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
