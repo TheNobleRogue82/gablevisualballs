@@ -8,155 +8,27 @@
         body {
             margin: 0;
             overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background: black;
         }
         canvas {
             display: block;
-            background: black;
         }
     </style>
 </head>
 <body>
     <canvas id="ballCanvas"></canvas>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
-    <script type="x-shader/x-vertex" id="vertex-shader">
-        attribute vec3 a_position;
-        void main() {
-            gl_Position = vec4(a_position, 1.0);
-        }
-    </script>
-    <script type="x-shader/x-fragment" id="nebula-shader">
-        precision mediump float;
-        uniform float u_time;
-        uniform vec2 u_resolution;
-        
-        #define ITERATIONS 70
-        #define pi 3.14159265
-        
-        float noise( in vec3 x ) {
-            vec3 p = floor(x);
-            vec3 f = fract(x);
-            f = f*f*(3.0-2.0*f);
-            return dot(p, f); // Simplified noise for WebGL compatibility
-        }
-
-        float fbm(vec3 p) {
-           return noise(p*.04125)*.5 + noise(p*.125)*.25 + noise(p*.25)*.125 + noise(p*.4)*.2;
-        }
-
-        void mainImage( out vec4 fragColor, in vec2 fragCoord ) {  
-            vec2 uv = fragCoord / u_resolution;
-            vec3 col = vec3(0.0);
-            float t = u_time * 0.05;
-            vec3 p = vec3(uv - 0.5, 0.5) * 4.0;
-            p.z += t;
-            float intensity = fbm(p);
-            col += vec3(intensity * 0.1, intensity * 0.3, intensity * 0.6);
-            fragColor = vec4(col, 1.0);
-        }
-
-        void main() {
-            mainImage(gl_FragColor, gl_FragCoord.xy);
-        }
-    </script>
+    <img id="logo" src="/mnt/data/Gable_Blue_Flag_Favicon.png" style="display: none;" alt="Gable Logo">
     <script>
         const canvas = document.getElementById('ballCanvas');
-        let gl = null;
-        let ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext('2d');
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
 
-        // Function to check if the browser supports WebGL
-        function isWebGLSupported() {
-            try {
-                const testCanvas = document.createElement('canvas');
-                const testContext = testCanvas.getContext('webgl') || testCanvas.getContext('experimental-webgl');
-                return !!testContext;
-            } catch (e) {
-                return false;
-            }
-        }
-
-        // Initialize WebGL context by attempting 'webgl' with explicit attributes
-        function initializeWebGL() {
-            if (!isWebGLSupported()) {
-                console.error('WebGL is not supported in this browser. Falling back to Canvas 2D rendering.');
-                return;
-            }
-
-            try {
-                // Attempt to get WebGL context with explicit attributes
-                const attributes = {
-                    alpha: false,
-                    depth: true,
-                    stencil: false,
-                    antialias: true,
-                    preserveDrawingBuffer: false
-                };
-                gl = canvas.getContext('webgl', attributes);
-                if (!gl) {
-                    console.error('WebGL not supported on this device. Falling back to Canvas 2D rendering.');
-                } else {
-                    console.log('WebGL context successfully initialized.');
-                }
-            } catch (e) {
-                console.error('Error initializing WebGL:', e);
-            }
-
-            if (gl) {
-                const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
-                if (debugInfo) {
-                    const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
-                    const vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL);
-                    console.log(`Renderer: ${renderer}`);
-                    console.log(`Vendor: ${vendor}`);
-                } else {
-                    console.log('Unable to get WebGL debug information.');
-                }
-            } else {
-                console.error('WebGL initialization failed after all attempts. Falling back to 2D context.');
-                // Verify if canvas is properly set up for 2D rendering
-                if (ctx) {
-                    console.log('2D context successfully initialized as fallback.');
-                } else {
-                    console.error('Failed to initialize 2D context as fallback. Check canvas setup.');
-                }
-            }
-        }
-
-        let nebulaProgram;
-
-        function initNebulaShader() {
-            if (!gl) return;
-
-            const vertexShaderSource = document.getElementById('vertex-shader').text;
-            const fragmentShaderSource = document.getElementById('nebula-shader').text;
-
-            const vertexShader = compileShader(gl.VERTEX_SHADER, vertexShaderSource);
-            const fragmentShader = compileShader(gl.FRAGMENT_SHADER, fragmentShaderSource);
-            if (!vertexShader || !fragmentShader) return;
-
-            nebulaProgram = gl.createProgram();
-            gl.attachShader(nebulaProgram, vertexShader);
-            gl.attachShader(nebulaProgram, fragmentShader);
-            gl.linkProgram(nebulaProgram);
-            if (!gl.getProgramParameter(nebulaProgram, gl.LINK_STATUS)) {
-                console.error('Program linking error:', gl.getProgramInfoLog(nebulaProgram));
-                return;
-            }
-
-            gl.useProgram(nebulaProgram);
-        }
-
-        function compileShader(type, source) {
-            const shader = gl.createShader(type);
-            gl.shaderSource(shader, source);
-            gl.compileShader(shader);
-            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-                console.error(`${type === gl.VERTEX_SHADER ? 'Vertex' : 'Fragment'} Shader compilation error:`, gl.getShaderInfoLog(shader));
-                return null;
-            }
-            return shader;
-        }
+        const logo = document.getElementById('logo');
 
         const MAX_DIAMETER = 4000;
         const MIN_DIAMETER = 10;
@@ -223,16 +95,30 @@
         }
 
         function animate() {
-            if (gl) {
-                gl.clear(gl.COLOR_BUFFER_BIT);
-                gl.useProgram(nebulaProgram);
-            }
-
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             balls.forEach(ball => {
                 ball.update();
                 ball.draw();
             });
+
+            // Draw the logo in the center with a glowing effect
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const logoRadius = 100;
+            const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, logoRadius);
+            gradient.addColorStop(0, 'rgba(0, 191, 255, 0.8)');
+            gradient.addColorStop(0.4, 'rgba(0, 191, 255, 0.4)');
+            gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, logoRadius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.closePath();
+
+            // Draw the logo image
+            const logoSize = 100;
+            ctx.drawImage(logo, centerX - logoSize / 2, centerY - logoSize / 2, logoSize, logoSize);
+
             requestAnimationFrame(animate);
         }
 
@@ -254,9 +140,6 @@
         }
 
         window.onload = () => {
-            initializeWebGL();
-            if (gl) initNebulaShader();
-
             fetch('https://gabledatavisual.blob.core.windows.net/data/data.csv')
                 .then(response => response.ok ? response.text() : Promise.reject(`HTTP error! status: ${response.status}`))
                 .then(csvText => {
