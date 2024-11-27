@@ -7,7 +7,7 @@
     <style>
         @font-face {
             font-family: 'DINOT';
-            src: url('https://drive.google.com/uc?export=download&id=1kcB1mt8gKlHnEvz8GjJ3d_tx5qxwGaZP') format('woff2'); /* Updated URL for font */
+            src: url('https://gabledatavisual.blob.core.windows.net/data/DINOT-Bold.otf') format('opentype'); /* Updated URL for font */
         }
         body {
             margin: 0;
@@ -72,8 +72,8 @@
                     ctx.closePath();
 
                     // Draw the glow effect
-                    ctx.shadowBlur = Math.max(50, this.brightness * 3); // Increase shadowBlur for brighter glow, more intense edges // Increase shadowBlur for brighter glow
-                    ctx.shadowColor = `rgba(135, 206, 250, ${this.brightness / 50})`; // Bright blueish-white glow with more intensity at edges // Bright blueish-white glow
+                    ctx.shadowBlur = 20; // Reduce shadowBlur for a more defined glow with a thinner edge // Increase shadowBlur for brighter glow, more intense edges // Increase shadowBlur for brighter glow
+                    ctx.shadowColor = `rgba(135, 206, 250, 1)`; // Bright blueish-white glow with a sharp, thin edge // Bright blueish-white glow with more intensity at edges // Bright blueish-white glow
                     ctx.fill();
                     ctx.shadowBlur = 0;
                     // Add inner glow effect
@@ -137,7 +137,7 @@
             ctx.fillStyle = "black";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.shadowBlur = 80; // Increase shadowBlur for brighter glow with more intense edges
+            ctx.shadowBlur = 40; // Reduce shadowBlur for the 'G' to create a more defined glow with a bright edge // Increase shadowBlur for brighter glow with more intense edges
             ctx.shadowColor = "rgba(135, 206, 250, 1.5)"; // Brighter blueish-white glow for "G" // Bright blueish-white glow for "G"
             ctx.fillText("G", centerX, centerY);
             ctx.shadowBlur = 0; // Reset shadowBlur after drawing
