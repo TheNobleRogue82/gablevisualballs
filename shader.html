@@ -56,7 +56,7 @@
                 ctx.beginPath();
                 const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.radius);
                 gradient.addColorStop(0, `rgba(255, 255, 255, ${this.brightnessFactor})`);
-                gradient.addColorStop(0.4, `rgba(173, 216, 230, ${this.brightnessFactor * 0.8})`);
+                gradient.addColorStop(0.3, `rgba(173, 216, 230, ${this.brightnessFactor * 0.6})`);
                 gradient.addColorStop(1, 'rgba(0, 191, 255, 0)');
                 ctx.fillStyle = gradient;
                 ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
@@ -65,7 +65,7 @@
             }
         }
 
-        function createNebula() {
+        function createEnhancedNebula() {
             const nebulaCanvas = document.createElement('canvas');
             nebulaCanvas.width = canvas.width;
             nebulaCanvas.height = canvas.height;
@@ -74,20 +74,33 @@
             nebulaCtx.fillStyle = 'black';
             nebulaCtx.fillRect(0, 0, nebulaCanvas.width, nebulaCanvas.height);
 
-            for (let i = 0; i < 200; i++) {
+            // Add multiple layers of nebula clouds
+            for (let i = 0; i < 500; i++) {
                 const x = Math.random() * nebulaCanvas.width;
                 const y = Math.random() * nebulaCanvas.height;
-                const radius = Math.random() * 50 + 20;
+                const radius = Math.random() * 100 + 50;
                 const gradient = nebulaCtx.createRadialGradient(x, y, 0, x, y, radius);
-                const alpha = Math.random() * 0.5 + 0.3;
+                const alpha = Math.random() * 0.4 + 0.1;
 
-                gradient.addColorStop(0, `rgba(100, 150, 255, ${alpha})`);
-                gradient.addColorStop(0.5, `rgba(50, 100, 255, ${alpha * 0.6})`);
+                gradient.addColorStop(0, `rgba(100, 100, 255, ${alpha})`);
+                gradient.addColorStop(0.3, `rgba(50, 50, 150, ${alpha * 0.5})`);
                 gradient.addColorStop(1, 'rgba(0, 0, 50, 0)');
 
                 nebulaCtx.fillStyle = gradient;
                 nebulaCtx.beginPath();
                 nebulaCtx.arc(x, y, radius, 0, Math.PI * 2);
+                nebulaCtx.fill();
+                nebulaCtx.closePath();
+            }
+
+            // Add random star-like points
+            for (let i = 0; i < 1000; i++) {
+                const x = Math.random() * nebulaCanvas.width;
+                const y = Math.random() * nebulaCanvas.height;
+                const starSize = Math.random() * 2;
+                nebulaCtx.fillStyle = `rgba(255, 255, 255, ${Math.random() * 0.8 + 0.2})`;
+                nebulaCtx.beginPath();
+                nebulaCtx.arc(x, y, starSize, 0, Math.PI * 2);
                 nebulaCtx.fill();
                 nebulaCtx.closePath();
             }
@@ -120,7 +133,7 @@
 
         function animate() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            createNebula();
+            createEnhancedNebula();
             balls.forEach(ball => {
                 ball.update();
                 ball.draw();
