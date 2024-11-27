@@ -65,8 +65,8 @@
         canvas.width = window.innerWidth || document.documentElement.clientWidth;
         canvas.height = window.innerHeight || document.documentElement.clientHeight;
 
+        // Attempt to get WebGL 2.0 context
         try {
-            // Explicitly request a WebGL 2.0 context with default settings
             gl = canvas.getContext('webgl2', {
                 antialias: true,
                 alpha: false,
@@ -75,12 +75,27 @@
                 preserveDrawingBuffer: false,
                 powerPreference: 'high-performance'
             });
+            if (gl) {
+                console.log('WebGL2 context successfully initialized.');
+            } else {
+                console.warn('WebGL2 not supported, attempting WebGL1 context.');
+                // Attempt to get WebGL 1.0 context as a fallback
+                gl = canvas.getContext('webgl', {
+                    antialias: true,
+                    alpha: false,
+                    depth: true,
+                    stencil: false,
+                    preserveDrawingBuffer: false,
+                    powerPreference: 'high-performance'
+                });
+                if (gl) {
+                    console.log('WebGL1 context successfully initialized as a fallback.');
+                } else {
+                    console.error('WebGL not supported on this device. Falling back to Canvas 2D rendering.');
+                }
+            }
         } catch (e) {
-            console.error('Error initializing WebGL2:', e);
-        }
-
-        if (!gl) {
-            console.warn('WebGL2 not supported, falling back to Canvas 2D rendering.');
+            console.error('Error initializing WebGL:', e);
         }
 
         let nebulaProgram;
@@ -236,6 +251,35 @@
                             console.log('Parsed CSV Data:', results.data);
                             balls.length = 0;
                             loadBallsFromData(results.data);
+                        },
+                        error: (error) => {
+                            console.error('Error parsing CSV:', error);
+                        }
+                    });
+                })
+                .catch(error => console.error('Error fetching CSV:', error));
+        }
+
+        window.onload = () => {
+            if (gl) {
+                initNebulaShader();
+            }
+
+            fetch('https://gabledatavisual.blob.core.windows.net/data/data.csv')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.text();
+                })
+                .then(csvText => {
+                    Papa.parse(csvText, {
+                        header: true,
+                        skipEmptyLines: true,
+                        complete: (results) => {
+                            console.log('Parsed CSV Data:', results.data);
+                            loadBallsFromData(results.data);
+                            animate();
                         },
                         error: (error) => {
                             console.error('Error parsing CSV:', error);
