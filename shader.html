@@ -55,7 +55,7 @@
                 ctx.closePath();
             }
         }
-            ctx.globalAlpha = 1.0; // Reset alpha
+        drawStars(); // Draw stars once during initialization // Reset alpha
 
         class Ball {
             constructor(diameter, speedFactor, orbitAngle) {
@@ -89,8 +89,8 @@
                     ctx.closePath();
 
                     // Draw the glow effect
-                    ctx.shadowBlur = 10; // Reduce shadowBlur for balls to create a more defined, bright ring
-                    ctx.shadowColor = `rgba(100, 149, 237, 2.5)`; // Bright blueish-white glow
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = `rgba(100, 149, 237, 3)`; // Bright blueish-white glow
                     ctx.fill();
                     ctx.shadowBlur = 0;
                 }
@@ -142,12 +142,8 @@
         }
 
         function animate() {
-            
-
-            // Draw the static starry background
-            drawStars();
-            ctx.globalCompositeOperation = 'destination-over';
-            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        
             // Draw the starry background
             drawStars();
 
@@ -166,7 +162,6 @@
                 ball.update();
                 ball.draw();
             });
-            ctx.globalCompositeOperation = 'source-over';
             requestAnimationFrame(animate);
         }
 
