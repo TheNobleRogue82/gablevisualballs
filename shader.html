@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tremble's Pebbles</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+            background: black;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="ballCanvas"></canvas>
+    <script id="vertexShader" type="x-shader/x-vertex">
+        attribute vec3 coordinates;
+        uniform mat4 transformationMatrix;
+        void main(void) {
+            gl_Position = transformationMatrix * vec4(coordinates, 1.0);
+            gl_PointSize = 5.0;
+        }
+    </script>
+    <script id="fragmentShader" type="x-shader/x-fragment">
+        precision mediump float;
+        void main(void) {
+            gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0); // Glowing white color
+        }
+    </script>
+    <script>
+        const canvas = document.getElementById('ballCanvas');
+        const gl = canvas.getContext('webgl');
+        canvas.width = window.innerWidth || document.documentElement.clientWidth;
+        canvas.height = window.innerHeight || document.documentElement.clientHeight;
+
+        // Vertex shader
+        const vertexShaderCode = document.getElementById('vertexShader').text;
+        const vertexShader = gl.createShader(gl.VERTEX_SHADER);
+        gl.shaderSource(vertexShader, vertexShaderCode);
+        gl.compileShader(vertexShader);
+
+        // Fragment shader
+        const fragmentShaderCode = document.getElementById('fragmentShader').text;
+        const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+        gl.shaderSource(fragmentShader, fragmentShaderCode);
+        gl.compileShader(fragmentShader);
+
+        // Shader program
+        const shaderProgram = gl.createProgram();
+        gl.attachShader(shaderProgram, vertexShader);
+        gl.attachShader(shaderProgram, fragmentShader);
+        gl.linkProgram(shaderProgram);
+        gl.useProgram(shaderProgram);
+
+        // Vertices for the balls
+        const ballCount = 50;
+        const radius = 3.0;
+        const vertices = [];
+        for (let i = 0; i < ballCount; i++) {
+            const angle = (i / ballCount) * 2 * Math.PI;
+            vertices.push(Math.cos(angle) * radius, Math.sin(angle) * radius, 0.0);
+        }
+
+        // Create and bind the buffer
+        const vertexBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+
+        // Bind vertex buffer to shader attributes
+        const coord = gl.getAttribLocation(shaderProgram, "coordinates");
+        gl.vertexAttribPointer(coord, 3, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(coord);
+
+        // Transformation
+        let angle = 0;
+        const transformationMatrix = gl.getUniformLocation(shaderProgram, "transformationMatrix");
+        function drawScene() {
+            gl.clearColor(0.0, 0.0, 0.0, 1.0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+
+            const cosA = Math.cos(angle);
+            const sinA = Math.sin(angle);
+            const matrix = new Float32Array([
+                cosA, -sinA, 0.0, 0.0,
+                sinA, cosA, 0.0, 0.0,
+                0.0, 0.0, 1.0, 0.0,
+                0.0, 0.0, 0.0, 1.0
+            ]);
+            gl.uniformMatrix4fv(transformationMatrix, false, matrix);
+
+            gl.drawArrays(gl.POINTS, 0, ballCount);
+
+            angle += 0.01;
+            requestAnimationFrame(drawScene);
+        }
+
+        drawScene();
+    </script>
+</body>
+</html>
