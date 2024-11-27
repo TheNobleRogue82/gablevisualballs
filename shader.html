@@ -17,88 +17,194 @@
 </head>
 <body>
     <canvas id="ballCanvas"></canvas>
-    <script id="vertexShader" type="x-shader/x-vertex">
-        attribute vec3 coordinates;
-        uniform mat4 transformationMatrix;
-        void main(void) {
-            gl_Position = transformationMatrix * vec4(coordinates, 1.0);
-            gl_PointSize = 5.0;
-        }
-    </script>
-    <script id="fragmentShader" type="x-shader/x-fragment">
-        precision mediump float;
-        void main(void) {
-            gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0); // Glowing white color
-        }
-    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <script>
         const canvas = document.getElementById('ballCanvas');
-        const gl = canvas.getContext('webgl');
+        const ctx = canvas.getContext('2d');
         canvas.width = window.innerWidth || document.documentElement.clientWidth;
         canvas.height = window.innerHeight || document.documentElement.clientHeight;
 
-        // Vertex shader
-        const vertexShaderCode = document.getElementById('vertexShader').text;
-        const vertexShader = gl.createShader(gl.VERTEX_SHADER);
-        gl.shaderSource(vertexShader, vertexShaderCode);
-        gl.compileShader(vertexShader);
+        const MAX_DIAMETER = 4000;
+        const MIN_DIAMETER = 10;
+        const MAX_AMOUNT = 5000000;
+        const MIN_AMOUNT = 1000;
+        const DATE_RANGE = 30;
+        const SPEED_FACTORS = [10, 9, 7, 5.5, 4, 2.5, 1, 0.5];
+        const balls = [];
 
-        // Fragment shader
-        const fragmentShaderCode = document.getElementById('fragmentShader').text;
-        const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
-        gl.shaderSource(fragmentShader, fragmentShaderCode);
-        gl.compileShader(fragmentShader);
+        class Ball {
+            constructor(x, y, diameter, speedFactor) {
+                this.x = x;
+                this.y = y;
+                this.diameter = diameter;
+                this.radius = diameter / 2;
+                this.hue = Math.random() * 360; // Start with a random hue value between 0 and 360
+                this.saturation = 100; // Full saturation for vibrant colors
+                this.lightness = 50; // Medium lightness for balanced colors
 
-        // Shader program
-        const shaderProgram = gl.createProgram();
-        gl.attachShader(shaderProgram, vertexShader);
-        gl.attachShader(shaderProgram, fragmentShader);
-        gl.linkProgram(shaderProgram);
-        gl.useProgram(shaderProgram);
+                this.speed = speedFactor;
 
-        // Vertices for the balls
-        const ballCount = 50;
-        const radius = 3.0;
-        const vertices = [];
-        for (let i = 0; i < ballCount; i++) {
-            const angle = (i / ballCount) * 2 * Math.PI;
-            vertices.push(Math.cos(angle) * radius, Math.sin(angle) * radius, 0.0);
+                const angle = Math.random() * 2 * Math.PI;
+                this.velocityX = this.speed * Math.cos(angle);
+                this.velocityY = this.speed * Math.sin(angle);
+            }
+
+            update() {
+                // Update position based on velocity
+                this.x += this.velocityX;
+                this.y += this.velocityY;
+
+                // Boundary collision - reflect direction
+                if (this.x - this.radius < 0) {
+                    this.velocityX = Math.abs(this.velocityX);
+                    this.x = this.radius;
+                } else if (this.x + this.radius > canvas.width) {
+                    this.velocityX = -Math.abs(this.velocityX);
+                    this.x = canvas.width - this.radius;
+                }
+
+                if (this.y - this.radius < 0) {
+                    this.velocityY = Math.abs(this.velocityY);
+                    this.y = this.radius;
+                } else if (this.y + this.radius > canvas.height) {
+                    this.velocityY = -Math.abs(this.velocityY);
+                    this.y = canvas.height - this.radius;
+                }
+
+                // Increment the hue to cycle through colors
+                this.hue += 0.5; // Adjust this value for faster or slower cycling
+                if (this.hue >= 360) {
+                    this.hue -= 360; // Keep hue in the range 0–360
+                }
+            }
+
+            draw() {
+                // Ensure valid values for gradient to avoid non-finite errors
+                if (isFinite(this.x) && isFinite(this.y) && isFinite(this.radius)) {
+                    // Create a 3D-like effect using radial gradient
+                    const gradient = ctx.createRadialGradient(
+                        this.x - this.radius / 4, 
+                        this.y - this.radius / 4, 
+                        Math.max(this.radius / 8, 0), 
+                        this.x, 
+                        this.y, 
+                        Math.max(this.radius, 0)
+                    );
+                    gradient.addColorStop(0, `hsl(${Math.round(this.hue)}, ${this.saturation}%, ${this.lightness + 20}%)`);
+                    gradient.addColorStop(1, `hsl(${Math.round(this.hue)}, ${this.saturation}%, ${this.lightness - 20}%)`);
+
+                    ctx.fillStyle = gradient;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.closePath();
+                }
+            }
         }
 
-        // Create and bind the buffer
-        const vertexBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+        function loadBallsFromData(data) {
+            const today = new Date();
+            data.forEach(record => {
+                try {
+                    // Parse the date field safely
+                    if (!record.Date) {
+                        console.warn('Skipping record due to missing date:', record);
+                        return;
+                    }
+                    const date = new Date(Date.parse(record.Date));
+                    const daysOld = Math.floor((today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+                    if (daysOld > DATE_RANGE) {
+                        console.log('Skipping record due to date range:', record);
+                        return;
+                    }
 
-        // Bind vertex buffer to shader attributes
-        const coord = gl.getAttribLocation(shaderProgram, "coordinates");
-        gl.vertexAttribPointer(coord, 3, gl.FLOAT, false, 0, 0);
-        gl.enableVertexAttribArray(coord);
+                    // Parse the amount safely
+                    const amountField = record[" Amount "] || record.Amount || record.amount; // Handle different possible field names
+                    if (!amountField) {
+                        console.warn('Skipping record due to missing amount:', record);
+                        return;
+                    }
+                    const amount = parseFloat(amountField.replace(/[$,]/g, ''));
+                    if (isNaN(amount) || amount < 1000) {
+                        console.warn('Skipping record due to invalid or insufficient amount:', record);
+                        return;
+                    }
 
-        // Transformation
-        let angle = 0;
-        const transformationMatrix = gl.getUniformLocation(shaderProgram, "transformationMatrix");
-        function drawScene() {
-            gl.clearColor(0.0, 0.0, 0.0, 1.0);
-            gl.clear(gl.COLOR_BUFFER_BIT);
+                    const diameter = Math.max(MIN_DIAMETER, Math.min(MAX_DIAMETER,
+                        ((amount - MIN_AMOUNT) / (MAX_AMOUNT - MIN_AMOUNT)) * (MAX_DIAMETER - MIN_DIAMETER) + MIN_DIAMETER));
+                    const speedFactor = SPEED_FACTORS[Math.min(daysOld, DATE_RANGE)];
 
-            const cosA = Math.cos(angle);
-            const sinA = Math.sin(angle);
-            const matrix = new Float32Array([
-                cosA, -sinA, 0.0, 0.0,
-                sinA, cosA, 0.0, 0.0,
-                0.0, 0.0, 1.0, 0.0,
-                0.0, 0.0, 0.0, 1.0
-            ]);
-            gl.uniformMatrix4fv(transformationMatrix, false, matrix);
+                    const x = Math.random() * (canvas.width - 200) + 100;
+                    const y = Math.random() * (canvas.height - 200) + 100;
+                    balls.push(new Ball(x, y, diameter, speedFactor));
 
-            gl.drawArrays(gl.POINTS, 0, ballCount);
-
-            angle += 0.01;
-            requestAnimationFrame(drawScene);
+                } catch (e) {
+                    console.error("Error processing record: ", record, e);
+                }
+            });
         }
 
-        drawScene();
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            balls.forEach(ball => {
+                ball.update();
+                ball.draw();
+            });
+            requestAnimationFrame(animate);
+        }
+
+        function refreshData() {
+            fetch('https://gabledatavisual.blob.core.windows.net/data/data.csv')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.text();
+                })
+                .then(csvText => {
+                    Papa.parse(csvText, {
+                        header: true,
+                        skipEmptyLines: true,
+                        complete: (results) => {
+                            console.log('Parsed CSV Data:', results.data);
+                            balls.length = 0; // Clear existing balls array
+                            loadBallsFromData(results.data); // Load new data without resetting positions
+                        },
+                        error: (error) => {
+                            console.error('Error parsing CSV:', error);
+                        }
+                    });
+                })
+                .catch(error => console.error('Error fetching CSV:', error));
+        }
+
+        window.onload = () => {
+            fetch('https://gabledatavisual.blob.core.windows.net/data/data.csv')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.text();
+                })
+                .then(csvText => {
+                    Papa.parse(csvText, {
+                        header: true,
+                        skipEmptyLines: true,
+                        complete: (results) => {
+                            console.log('Parsed CSV Data:', results.data);
+                            loadBallsFromData(results.data);
+                            animate();  // Start the animation directly
+                        },
+                        error: (error) => {
+                            console.error('Error parsing CSV:', error);
+                        }
+                    });
+                })
+                .catch(error => console.error('Error fetching CSV:', error));
+
+            // Set interval to refresh data every 3 minutes without resetting positions
+            setInterval(refreshData, 3 * 60 * 1000);
+        };
     </script>
 </body>
 </html>
