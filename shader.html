@@ -49,12 +49,12 @@
                 const x = Math.random() * canvas.width;
                 const y = Math.random() * canvas.height;
                 const radius = Math.random() * 1.5;
-                ctx.globalAlpha = Math.random() * 0.8 + 0.2; // Vary the opacity for subtlety
                 ctx.beginPath();
                 ctx.arc(x, y, radius, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.closePath();
             }
+        }
             ctx.globalAlpha = 1.0; // Reset alpha
         }
 
@@ -143,6 +143,11 @@
         }
 
         function animate() {
+            
+
+            // Draw the static starry background
+            drawStars();
+            ctx.globalCompositeOperation = 'destination-over';
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             // Draw the starry background
@@ -163,6 +168,7 @@
                 ball.update();
                 ball.draw();
             });
+            ctx.globalCompositeOperation = 'source-over';
             requestAnimationFrame(animate);
         }
 
