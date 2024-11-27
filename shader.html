@@ -7,7 +7,7 @@
     <style>
         @font-face {
             font-family: 'DINOT';
-            src: url('https://gabledatavisual.blob.core.windows.net/data/DINOT-Bold.otf') format('truetype'); // Corrected font format to 'truetype' /* Updated URL for font */
+            src: url('https://gabledatavisual.blob.core.windows.net/data/DINOT-Bold.otf') format('opentype'); // Corrected font format to 'opentype' // Corrected font format to 'truetype' /* Updated URL for font */
         }
         body {
             margin: 0;
@@ -73,7 +73,7 @@
 
                     // Draw the glow effect
                     ctx.shadowBlur = 10; // Reduce shadowBlur for balls to create a more defined, bright ring // Reduce shadowBlur for a more defined glow with a thinner edge // Increase shadowBlur for brighter glow, more intense edges // Increase shadowBlur for brighter glow
-                    ctx.shadowColor = `rgba(135, 206, 250, 2)`; // Brighter blueish-white glow for balls // Bright blueish-white glow with a sharp, thin edge // Bright blueish-white glow with more intensity at edges // Bright blueish-white glow
+                    ctx.shadowColor = `rgba(100, 149, 237, 2.5)`; // Make glow more blue and brighter // Brighter blueish-white glow for balls // Bright blueish-white glow with a sharp, thin edge // Bright blueish-white glow with more intensity at edges // Bright blueish-white glow
                     ctx.fill();
                     ctx.shadowBlur = 0;
                     // Add inner glow effect
@@ -138,7 +138,7 @@
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.shadowBlur = 20; // Reduce shadowBlur for the 'G' to create a more defined glow // Reduce shadowBlur for the 'G' to create a more defined glow with a bright edge // Increase shadowBlur for brighter glow with more intense edges
-            ctx.shadowColor = "rgba(135, 206, 250, 2)"; // Brighter blueish-white glow for 'G' // Brighter blueish-white glow for "G" // Bright blueish-white glow for "G"
+            ctx.shadowColor = "rgba(100, 149, 237, 2.5)"; // Make glow more blue and brighter for 'G' // Brighter blueish-white glow for 'G' // Brighter blueish-white glow for "G" // Bright blueish-white glow for "G"
             ctx.fillText("G", centerX, centerY);
             ctx.shadowBlur = 0; // Reset shadowBlur after drawing
 
