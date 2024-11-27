@@ -66,7 +66,15 @@
         canvas.height = window.innerHeight || document.documentElement.clientHeight;
 
         try {
-            gl = canvas.getContext('webgl2');
+            // Explicitly request a WebGL 2.0 context with default settings
+            gl = canvas.getContext('webgl2', {
+                antialias: true,
+                alpha: false,
+                depth: true,
+                stencil: false,
+                preserveDrawingBuffer: false,
+                powerPreference: 'high-performance'
+            });
         } catch (e) {
             console.error('Error initializing WebGL2:', e);
         }
@@ -228,35 +236,6 @@
                             console.log('Parsed CSV Data:', results.data);
                             balls.length = 0;
                             loadBallsFromData(results.data);
-                        },
-                        error: (error) => {
-                            console.error('Error parsing CSV:', error);
-                        }
-                    });
-                })
-                .catch(error => console.error('Error fetching CSV:', error));
-        }
-
-        window.onload = () => {
-            if (gl) {
-                initNebulaShader();
-            }
-
-            fetch('https://gabledatavisual.blob.core.windows.net/data/data.csv')
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.text();
-                })
-                .then(csvText => {
-                    Papa.parse(csvText, {
-                        header: true,
-                        skipEmptyLines: true,
-                        complete: (results) => {
-                            console.log('Parsed CSV Data:', results.data);
-                            loadBallsFromData(results.data);
-                            animate();
                         },
                         error: (error) => {
                             console.error('Error parsing CSV:', error);
