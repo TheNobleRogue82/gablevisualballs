@@ -18,6 +18,12 @@
 <body>
     <canvas id="ballCanvas"></canvas>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script type="x-shader/x-vertex" id="vertex-shader">
+        attribute vec3 a_position;
+        void main() {
+            gl_Position = vec4(a_position, 1.0);
+        }
+    </script>
     <script type="x-shader/x-fragment" id="nebula-shader">
         precision mediump float;
         uniform float u_time;
@@ -30,9 +36,7 @@
             vec3 p = floor(x);
             vec3 f = fract(x);
             f = f*f*(3.0-2.0*f);
-            vec2 uv = (p.xy+vec2(37.0,17.0)*p.z) + f.xy;
-            vec2 rg = texture2D(iChannel0, (uv+ 0.5)/256.0).yx;
-            return 1. - 0.82*mix( rg.x, rg.y, f.z );
+            return dot(p, f); // Simplified noise for WebGL compatibility
         }
 
         float fbm(vec3 p) {
@@ -61,23 +65,39 @@
         canvas.height = window.innerHeight || document.documentElement.clientHeight;
 
         const gl = canvas.getContext('webgl');
+        if (!gl) {
+            console.error('WebGL not supported');
+        }
+
         let nebulaProgram;
 
         function initNebulaShader() {
+            const vertexShaderSource = document.getElementById('vertex-shader').text;
             const fragmentShaderSource = document.getElementById('nebula-shader').text;
-            const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
-            gl.shaderSource(fragmentShader, fragmentShaderSource);
-            gl.compileShader(fragmentShader);
 
-            if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) {
-                console.error('Shader compilation error:', gl.getShaderInfoLog(fragmentShader));
+            // Compile vertex shader
+            const vertexShader = gl.createShader(gl.VERTEX_SHADER);
+            gl.shaderSource(vertexShader, vertexShaderSource);
+            gl.compileShader(vertexShader);
+            if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)) {
+                console.error('Vertex Shader compilation error:', gl.getShaderInfoLog(vertexShader));
                 return;
             }
 
+            // Compile fragment shader
+            const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+            gl.shaderSource(fragmentShader, fragmentShaderSource);
+            gl.compileShader(fragmentShader);
+            if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) {
+                console.error('Fragment Shader compilation error:', gl.getShaderInfoLog(fragmentShader));
+                return;
+            }
+
+            // Link shaders into a program
             nebulaProgram = gl.createProgram();
+            gl.attachShader(nebulaProgram, vertexShader);
             gl.attachShader(nebulaProgram, fragmentShader);
             gl.linkProgram(nebulaProgram);
-
             if (!gl.getProgramParameter(nebulaProgram, gl.LINK_STATUS)) {
                 console.error('Program linking error:', gl.getProgramInfoLog(nebulaProgram));
                 return;
