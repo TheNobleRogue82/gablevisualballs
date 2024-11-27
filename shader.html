@@ -18,182 +18,118 @@
 <body>
     <canvas id="ballCanvas"></canvas>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
-    <script>
-        const canvas = document.getElementById('ballCanvas');
-        const ctx = canvas.getContext('2d');
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-
-        const MAX_DIAMETER = 4000;
-        const MIN_DIAMETER = 10;
-        const MAX_AMOUNT = 5000000;
-        const MIN_AMOUNT = 1000;
-        const DATE_RANGE = 30;
-        const SPEED_FACTORS = [10, 9, 7, 5.5, 4, 2.5, 1, 0.5];
-        const balls = [];
-
-        class Ball {
-            constructor(x, y, diameter, speedFactor, brightnessFactor) {
-                this.x = x;
-                this.y = y;
-                this.diameter = diameter;
-                this.radius = diameter / 2;
-                this.speed = speedFactor;
-                this.brightnessFactor = brightnessFactor;
-                this.angle = Math.random() * 2 * Math.PI;
-                this.orbitRadius = Math.random() * (canvas.width / 3) + 100;
-            }
-
-            update() {
-                this.angle += this.speed * 0.002;
-                this.x = canvas.width / 2 + this.orbitRadius * Math.cos(this.angle);
-                this.y = canvas.height / 2 + this.orbitRadius * Math.sin(this.angle);
-            }
-
-            draw() {
-                if (!isFinite(this.x) || !isFinite(this.y) || !isFinite(this.radius) || this.radius <= 0) return;
-
-                ctx.beginPath();
-                const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.radius);
-                gradient.addColorStop(0, `rgba(255, 255, 255, ${this.brightnessFactor})`);
-                gradient.addColorStop(0.3, `rgba(173, 216, 230, ${this.brightnessFactor * 0.6})`);
-                gradient.addColorStop(1, 'rgba(0, 191, 255, 0)');
-                ctx.fillStyle = gradient;
-                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.closePath();
-            }
+    <script type="x-shader/x-vertex" id="vertex-shader">
+        attribute vec3 a_position;
+        void main() {
+            gl_Position = vec4(a_position, 1.0);
         }
-
-        function drawCentralShape() {
-            // Draw a central geometric shape inspired by the Gable logo
-            ctx.save();
-            ctx.translate(canvas.width / 2, canvas.height / 2);
-
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
-            ctx.lineWidth = 2;
-
-            // Draw the outer square
-            const size = 200;
-            ctx.beginPath();
-            ctx.rect(-size / 2, -size / 2, size, size);
-            ctx.stroke();
-
-            // Draw the inner diamond shape
-            ctx.beginPath();
-            ctx.moveTo(0, -size / 2);
-            ctx.lineTo(size / 2, 0);
-            ctx.lineTo(0, size / 2);
-            ctx.lineTo(-size / 2, 0);
-            ctx.closePath();
-            ctx.stroke();
-
-            // Draw diagonal lines
-            ctx.beginPath();
-            ctx.moveTo(-size / 2, -size / 2);
-            ctx.lineTo(size / 2, size / 2);
-            ctx.moveTo(size / 2, -size / 2);
-            ctx.lineTo(-size / 2, size / 2);
-            ctx.stroke();
-
-            ctx.restore();
-        }
-
-        function loadBallsFromData(data) {
-            const today = new Date();
-            data.forEach(record => {
-                try {
-                    const date = record.Date ? new Date(Date.parse(record.Date)) : null;
-                    if (!date || (today - date) / (1000 * 60 * 60 * 24) > DATE_RANGE) return;
-
-                    const amount = parseFloat((record[" Amount "] || record.Amount || record.amount || '').replace(/[$,]/g, ''));
-                    if (isNaN(amount) || amount < MIN_AMOUNT) return;
-
-                    const diameter = Math.max(MIN_DIAMETER, Math.min(MAX_DIAMETER,
-                        ((amount - MIN_AMOUNT) / (MAX_AMOUNT - MIN_AMOUNT)) * (MAX_DIAMETER - MIN_DIAMETER) + MIN_DIAMETER));
-                    const speedFactor = SPEED_FACTORS[Math.min(Math.floor((today - date) / (1000 * 60 * 60 * 24)), SPEED_FACTORS.length - 1)] || 1;
-                    const brightnessFactor = 1 - Math.min((today - date) / (1000 * 60 * 60 * 24 * DATE_RANGE), 0.8);
-
-                    balls.push(new Ball(0, 0, diameter, speedFactor, brightnessFactor));
-
-                } catch (e) {
-                    console.error("Error processing record: ", record, e);
-                }
-            });
-        }
-
-        function animate() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            drawCentralShape();
-            balls.forEach(ball => {
-                ball.update();
-                ball.draw();
-            });
-            requestAnimationFrame(animate);
-        }
-
-        function refreshData() {
-            fetch('https://gabledatavisual.blob.core.windows.net/data/data.csv')
-                .then(response => response.ok ? response.text() : Promise.reject(`HTTP error! status: ${response.status}`))
-                .then(csvText => {
-                    Papa.parse(csvText, {
-                        header: true,
-                        skipEmptyLines: true,
-                        complete: results => {
-                            balls.length = 0;
-                            loadBallsFromData(results.data);
-                        },
-                        error: error => console.error('Error parsing CSV:', error)
-                    });
-                })
-                .catch(error => console.error('Error fetching CSV:', error));
-        }
-
-        window.onload = () => {
-            fetch('https://gabledatavisual.blob.core.windows.net/data/data.csv')
-                .then(response => response.ok ? response.text() : Promise.reject(`HTTP error! status: ${response.status}`))
-                .then(csvText => {
-                    Papa.parse(csvText, {
-                        header: true,
-                        skipEmptyLines: true,
-                        complete: results => {
-                            loadBallsFromData(results.data);
-                            animate();
-                        },
-                        error: error => console.error('Error parsing CSV:', error)
-                    });
-                })
-                .catch(error => console.error('Error fetching CSV:', error));
-
-            setInterval(refreshData, 3 * 60 * 1000);
-        };
     </script>
-</body>
-</html><!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tremble's Pebbles</title>
-    <style>
-        body {
-            margin: 0;
-            overflow: hidden;
+    <script type="x-shader/x-fragment" id="nebula-shader">
+        precision mediump float;
+        uniform float u_time;
+        uniform vec2 u_resolution;
+        
+        #define ITERATIONS 70
+        #define pi 3.14159265
+        
+        float noise( in vec3 x ) {
+            vec3 p = floor(x);
+            vec3 f = fract(x);
+            f = f*f*(3.0-2.0*f);
+            return dot(p, f); // Simplified noise for WebGL compatibility
         }
-        canvas {
-            display: block;
-            background: black;
+
+        float fbm(vec3 p) {
+           return noise(p*.04125)*.5 + noise(p*.125)*.25 + noise(p*.25)*.125 + noise(p*.4)*.2;
         }
-    </style>
-</head>
-<body>
-    <canvas id="ballCanvas"></canvas>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+
+        void mainImage( out vec4 fragColor, in vec2 fragCoord ) {  
+            vec2 uv = fragCoord / u_resolution;
+            vec3 col = vec3(0.0);
+            float t = u_time * 0.05;
+            vec3 p = vec3(uv - 0.5, 0.5) * 4.0;
+            p.z += t;
+            float intensity = fbm(p);
+            col += vec3(intensity * 0.1, intensity * 0.3, intensity * 0.6);
+            fragColor = vec4(col, 1.0);
+        }
+
+        void main() {
+            mainImage(gl_FragColor, gl_FragCoord.xy);
+        }
+    </script>
     <script>
         const canvas = document.getElementById('ballCanvas');
-        const ctx = canvas.getContext('2d');
+        let gl = null;
+        let ctx = canvas.getContext('2d');
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
+
+        // Initialize WebGL context with explicit attributes
+        function initializeWebGL() {
+            try {
+                const attributes = {
+                    alpha: false,
+                    depth: true,
+                    stencil: false,
+                    antialias: true,
+                    preserveDrawingBuffer: false
+                };
+
+                // Attempt to get WebGL2 context first
+                gl = canvas.getContext('webgl2', attributes);
+                if (!gl) {
+                    console.warn('WebGL2 not supported, attempting WebGL1 context.');
+                    gl = canvas.getContext('webgl', attributes);
+                }
+                if (!gl) {
+                    console.warn('WebGL1 not supported, attempting experimental-webgl context.');
+                    gl = canvas.getContext('experimental-webgl', attributes);
+                }
+                if (gl) {
+                    console.log('WebGL context successfully initialized.');
+                } else {
+                    console.error('WebGL not supported on this device. Falling back to Canvas 2D rendering.');
+                }
+            } catch (e) {
+                console.error('Error initializing WebGL:', e);
+            }
+        }
+
+        let nebulaProgram;
+
+        function initNebulaShader() {
+            if (!gl) return;
+
+            const vertexShaderSource = document.getElementById('vertex-shader').text;
+            const fragmentShaderSource = document.getElementById('nebula-shader').text;
+
+            const vertexShader = compileShader(gl.VERTEX_SHADER, vertexShaderSource);
+            const fragmentShader = compileShader(gl.FRAGMENT_SHADER, fragmentShaderSource);
+            if (!vertexShader || !fragmentShader) return;
+
+            nebulaProgram = gl.createProgram();
+            gl.attachShader(nebulaProgram, vertexShader);
+            gl.attachShader(nebulaProgram, fragmentShader);
+            gl.linkProgram(nebulaProgram);
+            if (!gl.getProgramParameter(nebulaProgram, gl.LINK_STATUS)) {
+                console.error('Program linking error:', gl.getProgramInfoLog(nebulaProgram));
+                return;
+            }
+
+            gl.useProgram(nebulaProgram);
+        }
+
+        function compileShader(type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error(`${type === gl.VERTEX_SHADER ? 'Vertex' : 'Fragment'} Shader compilation error:`, gl.getShaderInfoLog(shader));
+                return null;
+            }
+            return shader;
+        }
 
         const MAX_DIAMETER = 4000;
         const MIN_DIAMETER = 10;
@@ -227,56 +163,13 @@
                 ctx.beginPath();
                 const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.radius);
                 gradient.addColorStop(0, `rgba(255, 255, 255, ${this.brightnessFactor})`);
-                gradient.addColorStop(0.3, `rgba(173, 216, 230, ${this.brightnessFactor * 0.6})`);
+                gradient.addColorStop(0.4, `rgba(173, 216, 230, ${this.brightnessFactor * 0.8})`);
                 gradient.addColorStop(1, 'rgba(0, 191, 255, 0)');
                 ctx.fillStyle = gradient;
                 ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.closePath();
             }
-        }
-
-        function createEnhancedNebula() {
-            const nebulaCanvas = document.createElement('canvas');
-            nebulaCanvas.width = canvas.width;
-            nebulaCanvas.height = canvas.height;
-            const nebulaCtx = nebulaCanvas.getContext('2d');
-
-            nebulaCtx.fillStyle = 'black';
-            nebulaCtx.fillRect(0, 0, nebulaCanvas.width, nebulaCanvas.height);
-
-            // Add multiple layers of nebula clouds
-            for (let i = 0; i < 500; i++) {
-                const x = Math.random() * nebulaCanvas.width;
-                const y = Math.random() * nebulaCanvas.height;
-                const radius = Math.random() * 100 + 50;
-                const gradient = nebulaCtx.createRadialGradient(x, y, 0, x, y, radius);
-                const alpha = Math.random() * 0.4 + 0.1;
-
-                gradient.addColorStop(0, `rgba(100, 100, 255, ${alpha})`);
-                gradient.addColorStop(0.3, `rgba(50, 50, 150, ${alpha * 0.5})`);
-                gradient.addColorStop(1, 'rgba(0, 0, 50, 0)');
-
-                nebulaCtx.fillStyle = gradient;
-                nebulaCtx.beginPath();
-                nebulaCtx.arc(x, y, radius, 0, Math.PI * 2);
-                nebulaCtx.fill();
-                nebulaCtx.closePath();
-            }
-
-            // Add random star-like points
-            for (let i = 0; i < 1000; i++) {
-                const x = Math.random() * nebulaCanvas.width;
-                const y = Math.random() * nebulaCanvas.height;
-                const starSize = Math.random() * 2;
-                nebulaCtx.fillStyle = `rgba(255, 255, 255, ${Math.random() * 0.8 + 0.2})`;
-                nebulaCtx.beginPath();
-                nebulaCtx.arc(x, y, starSize, 0, Math.PI * 2);
-                nebulaCtx.fill();
-                nebulaCtx.closePath();
-            }
-
-            ctx.drawImage(nebulaCanvas, 0, 0);
         }
 
         function loadBallsFromData(data) {
@@ -303,8 +196,12 @@
         }
 
         function animate() {
+            if (gl) {
+                gl.clear(gl.COLOR_BUFFER_BIT);
+                gl.useProgram(nebulaProgram);
+            }
+
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            createEnhancedNebula();
             balls.forEach(ball => {
                 ball.update();
                 ball.draw();
@@ -330,6 +227,9 @@
         }
 
         window.onload = () => {
+            initializeWebGL();
+            if (gl) initNebulaShader();
+
             fetch('https://gabledatavisual.blob.core.windows.net/data/data.csv')
                 .then(response => response.ok ? response.text() : Promise.reject(`HTTP error! status: ${response.status}`))
                 .then(csvText => {
