@@ -56,7 +56,6 @@
             }
         }
             ctx.globalAlpha = 1.0; // Reset alpha
-        }
 
         class Ball {
             constructor(diameter, speedFactor, orbitAngle) {
@@ -148,8 +147,7 @@
             // Draw the static starry background
             drawStars();
             ctx.globalCompositeOperation = 'destination-over';
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
+            
             // Draw the starry background
             drawStars();
 
