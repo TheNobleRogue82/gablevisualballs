@@ -66,13 +66,13 @@
         canvas.height = window.innerHeight || document.documentElement.clientHeight;
 
         try {
-            gl = canvas.getContext('webgl');
+            gl = canvas.getContext('webgl2');
         } catch (e) {
-            console.error('Error initializing WebGL:', e);
+            console.error('Error initializing WebGL2:', e);
         }
 
         if (!gl) {
-            console.warn('WebGL not supported, falling back to Canvas 2D rendering.');
+            console.warn('WebGL2 not supported, falling back to Canvas 2D rendering.');
         }
 
         let nebulaProgram;
@@ -187,7 +187,8 @@
 
                     const diameter = Math.max(MIN_DIAMETER, Math.min(MAX_DIAMETER,
                         ((amount - MIN_AMOUNT) / (MAX_AMOUNT - MIN_AMOUNT)) * (MAX_DIAMETER - MIN_DIAMETER) + MIN_DIAMETER));
-                    const speedFactor = SPEED_FACTORS[Math.min(daysOld, DATE_RANGE)];
+                    const speedFactorIndex = Math.min(daysOld, SPEED_FACTORS.length - 1);
+                    const speedFactor = SPEED_FACTORS[speedFactorIndex] || 1; // Default to 1 if undefined
 
                     balls.push(new Ball(0, 0, diameter, speedFactor));
 
