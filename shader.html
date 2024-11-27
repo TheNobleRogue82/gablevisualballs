@@ -60,18 +60,26 @@
     </script>
     <script>
         const canvas = document.getElementById('ballCanvas');
-        const ctx = canvas.getContext('2d');
+        let gl = null;
+        let ctx = canvas.getContext('2d');
         canvas.width = window.innerWidth || document.documentElement.clientWidth;
         canvas.height = window.innerHeight || document.documentElement.clientHeight;
 
-        const gl = canvas.getContext('webgl');
+        try {
+            gl = canvas.getContext('webgl');
+        } catch (e) {
+            console.error('Error initializing WebGL:', e);
+        }
+
         if (!gl) {
-            console.error('WebGL not supported');
+            console.warn('WebGL not supported, falling back to Canvas 2D rendering.');
         }
 
         let nebulaProgram;
 
         function initNebulaShader() {
+            if (!gl) return;
+
             const vertexShaderSource = document.getElementById('vertex-shader').text;
             const fragmentShaderSource = document.getElementById('nebula-shader').text;
 
@@ -185,8 +193,10 @@
         }
 
         function animate() {
-            gl.clear(gl.COLOR_BUFFER_BIT);
-            gl.useProgram(nebulaProgram);
+            if (gl) {
+                gl.clear(gl.COLOR_BUFFER_BIT);
+                gl.useProgram(nebulaProgram);
+            }
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             balls.forEach(ball => {
@@ -222,7 +232,9 @@
         }
 
         window.onload = () => {
-            initNebulaShader();
+            if (gl) {
+                initNebulaShader();
+            }
 
             fetch('https://gabledatavisual.blob.core.windows.net/data/data.csv')
                 .then(response => {
