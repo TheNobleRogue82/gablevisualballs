@@ -42,20 +42,28 @@
         const orbitRadius = Math.min(canvas.width, canvas.height) / 3;
 
         // Function to draw a starry background
-        function drawStars() {
+        const stars = [];
+        function initializeStars() {
             const numStars = 200;
-            ctx.fillStyle = 'white';
             for (let i = 0; i < numStars; i++) {
                 const x = Math.random() * canvas.width;
                 const y = Math.random() * canvas.height;
                 const radius = Math.random() * 1.5;
-                ctx.beginPath();
-                ctx.arc(x, y, radius, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.closePath();
+                stars.push({ x, y, radius });
             }
         }
-        drawStars(); // Draw stars once during initialization // Reset alpha
+
+        function drawStars() {
+            ctx.fillStyle = 'white';
+            stars.forEach(star => {
+                ctx.beginPath();
+                ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.closePath();
+            });
+        }
+
+        initializeStars(); // Draw stars once during initialization // Reset alpha
 
         class Ball {
             constructor(diameter, speedFactor, orbitAngle) {
@@ -143,6 +151,7 @@
 
         function animate() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawStars(); // Draw the static starry background
 
             // Draw the central "G" character
             ctx.font = "bold 100px FutoSansHeavy, Arial, sans-serif";
