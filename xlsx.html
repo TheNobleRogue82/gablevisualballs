@@ -149,7 +149,7 @@
                         ((amount - MIN_AMOUNT) / (MAX_AMOUNT - MIN_AMOUNT)) * (MAX_DIAMETER - MIN_DIAMETER) + MIN_DIAMETER));
                     const speedFactor = SPEED_FACTORS[Math.min(daysOld, DATE_RANGE)];
                     const orbitAngle = Math.random() * 2 * Math.PI;
-                    //const brightness = 100 - (daysOld * (100 / DATE_RANGE)); // Calculate brightness based on days old
+                    const brightness = 100 - (daysOld * (100 / DATE_RANGE)); // Calculate brightness based on days old
 
                     const ball = new Ball(diameter, speedFactor, orbitAngle);
                     ball.brightness = brightness;
