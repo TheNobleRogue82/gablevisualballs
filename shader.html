@@ -70,22 +70,15 @@
                 vec3 color = vec3(0.0);
                 float alpha = 0.0;
 
-                for (int i = 0; i < 100; i++) {
-                    if (i >= u_numHalos) {
-                        break;
-                    }
-                    float radius = u_haloData[i].x;
-                    float speedFactor = u_haloData[i].y;
-                    float size = u_haloData[i].z;
+                // Debugging: Render a static halo for visibility
+                float radius = 0.5;
+                float angle = u_time * 0.5;
+                vec2 haloPos = vec2(cos(angle), sin(angle)) * radius;
 
-                    float angle = u_time * speedFactor;
-                    vec2 haloPos = vec2(cos(angle + float(i)), sin(angle + float(i))) * radius;
-
-                    float dist = length(st - haloPos);
-                    float intensity = smoothstep(size * 0.5, 0.0, dist);
-                    color += vec3(1.0, 0.5, 0.2) * intensity; // Use fixed color for visibility
-                    alpha += intensity;
-                }
+                float dist = length(st - haloPos);
+                float intensity = smoothstep(0.1, 0.0, dist);
+                color += vec3(0.5, 0.8, 1.0) * intensity;
+                alpha += intensity;
 
                 // Fallback to a bright red color if no halos are visible
                 if (alpha == 0.0) {
