@@ -141,6 +141,9 @@
             const today = new Date();
             data.forEach(record => {
                 try {
+                    // Log all fields in the current record to see what is available
+                    console.log('Record Fields:', record);
+
                     // Parse the date field safely
                     if (!record['OpenOrder[OrderDate]']) {
                         console.warn('Skipping record due to missing date:', record);
