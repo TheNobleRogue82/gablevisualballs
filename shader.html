@@ -81,11 +81,11 @@
 
                     float dist = length(st - haloPos);
                     float intensity = smoothstep(size * 0.5, 0.0, dist);
-                    color += vec3(0.3, 0.5, 1.0) * intensity; // Simpler color for better visibility
+                    color += vec3(1.0, 0.7, 0.2) * intensity; // Brighter color for better visibility
                     alpha += intensity;
                 }
 
-                gl_FragColor = vec4(color, alpha * 0.8);
+                gl_FragColor = vec4(color, min(alpha, 1.0));
             }
         `;
 
@@ -183,7 +183,14 @@
             gl.uniform1i(numHalosUniformLocation, Math.min(ballAmounts.length, 100));
             gl.uniform3fv(haloDataUniformLocation, haloData);
 
+            console.log('Rendering frame:', { resolution: [gl.canvas.width, gl.canvas.height], time, haloData });
+
             gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+            const error = gl.getError();
+            if (error !== gl.NO_ERROR) {
+                console.error('WebGL error during render:', error);
+            }
 
             requestAnimationFrame(render);
         }
