@@ -62,19 +62,17 @@
             }
         `;
 
-        // Fragment shader source (improved glow effect)
+        // Fragment shader source (improved circular glow effect)
         const fragmentShaderSource = `
             precision mediump float;
             void main() {
                 vec2 st = gl_PointCoord - vec2(0.5);
-                float dist = length(st);
-                float intensity = exp(-dist * dist * 20.0);
+                float dist = length(st) * 2.0;
+                float alpha = smoothstep(0.5, 0.0, dist); // Create a smooth circular gradient with transparency
                 vec3 color1 = vec3(0.611765, 0.262745, 0.996078);
                 vec3 color2 = vec3(0.298039, 0.760784, 0.913725);
-                vec3 color3 = vec3(0.062745, 0.078431, 0.600000);
                 vec3 color = mix(color1, color2, 0.5);
-                color = mix(color, color3, dist);
-                gl_FragColor = vec4(color, intensity);
+                gl_FragColor = vec4(color, alpha * 0.8); // Apply alpha to make the edge glow softer
             }
         `;
 
@@ -128,9 +126,9 @@
         function drawG() {
             ctx2d.clearRect(0, 0, gCanvas.width, gCanvas.height);
             ctx2d.font = "bold 200px 'FutoSansHeavy', Arial, sans-serif";
-            ctx2d.fillStyle = "rgba(0, 102, 255, 0.8)";
+            ctx2d.fillStyle = "rgba(0, 102, 255, 1.0)";
             ctx2d.shadowColor = "rgba(0, 102, 255, 1)";
-            ctx2d.shadowBlur = 40;
+            ctx2d.shadowBlur = 60;
             ctx2d.textAlign = "center";
             ctx2d.textBaseline = "middle";
             ctx2d.fillText("G", gCanvas.width / 2, gCanvas.height / 2);
