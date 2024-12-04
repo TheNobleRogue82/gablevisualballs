@@ -39,6 +39,7 @@
 
         // Vertex shader source
         const vertexShaderSource = `
+            precision mediump float;
             attribute vec2 a_position;
             uniform vec2 u_resolution;
             void main() {
@@ -166,8 +167,8 @@
                     const diameter = Math.max(10, Math.min(4000, ((amount - 1000) / (5000000 - 1000)) * (4000 - 10) + 10));
                     const orbitAngle = Math.random() * 2 * Math.PI;
                     const orbitRadius = Math.min(canvas.width, canvas.height) / 3 * (0.5 + Math.random());
-                    const x = centerX + orbitRadius * Math.cos(orbitAngle);
-                    const y = centerY + orbitRadius * Math.sin(orbitAngle);
+                    const x = canvas.width / 2 + orbitRadius * Math.cos(orbitAngle);
+                    const y = canvas.height / 2 + orbitRadius * Math.sin(orbitAngle);
                     positions.push(x, y);
 
                 } catch (e) {
