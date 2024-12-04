@@ -33,7 +33,7 @@
         const MIN_DIAMETER = 10;
         const MAX_AMOUNT = 5000000;
         const MIN_AMOUNT = 1000;
-        const DATE_RANGE = 7; // Set to 7 to match intention of ignoring data older than 7 days
+        const DATE_RANGE = 30;
         const SPEED_FACTORS = [10, 9, 7, 5.5, 4, 2.5, 1, 0.5];
         const balls = [];
 
@@ -97,15 +97,15 @@
                     ctx.closePath();
 
                     // Draw the glow effect
-                    ctx.shadowBlur = 15; // Reduced shadowBlur for a subtle glow effect
+                    ctx.shadowBlur = 20; // Reduced shadowBlur for a subtle glow effect
                     ctx.shadowColor = `rgba(100, 149, 237, 0.7)`; // Softer glow effect
                     ctx.fill();
                     ctx.shadowBlur = 0;
 
                     // Add an inner glow effect along the edge of the circle
-                    const gradient = ctx.createRadialGradient(this.x, this.y, this.radius * 0.9, this.x, this.y, this.radius);
-                    gradient.addColorStop(0, 'rgba(255, 255, 255, 0)');
-                    gradient.addColorStop(1, 'rgba(100, 149, 237, 0.5)');
+                    const gradient = ctx.createRadialGradient(this.x, this.y, this.radius * 0.8, this.x, this.y, this.radius);
+                    gradient.addColorStop(0, 'rgba(100, 150, 255, 0)');
+                    gradient.addColorStop(1, 'rgba(50, 100, 237, 0.7)');
                     ctx.fillStyle = gradient;
                     ctx.beginPath();
                     ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
@@ -120,12 +120,12 @@
             data.forEach(record => {
                 try {
                     // Parse the date field safely
-                    if (!record['Orders[OrderDate]']) {
+                    if (!record['OpenOrder[OrderDate]']) {
                         console.warn('Skipping record due to missing date:', record);
                         return;
                     }
                     // Convert Excel serial date to JavaScript Date
-                    const excelDate = record['Orders[OrderDate]'];
+                    const excelDate = record['OpenOrder[OrderDate]'];
                     const date = new Date((excelDate - 25569) * 86400 * 1000); // 25569 is the offset to Unix epoch time
                     const daysOld = Math.floor((today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
                     if (daysOld > DATE_RANGE) {
@@ -134,7 +134,7 @@
                     }
 
                     // Parse the amount safely
-                    const amountField = record['[SumOrderSubtotal]']; // Handle different possible field names
+                    const amountField = record['[SumOrderTotal]']; // Handle different possible field names
                     if (typeof amountField !== 'number') {
                         console.warn('Skipping record due to invalid amount type:', record);
                         return;
@@ -147,7 +147,7 @@
 
                     const diameter = Math.max(MIN_DIAMETER, Math.min(MAX_DIAMETER,
                         ((amount - MIN_AMOUNT) / (MAX_AMOUNT - MIN_AMOUNT)) * (MAX_DIAMETER - MIN_DIAMETER) + MIN_DIAMETER));
-                    const speedFactor = SPEED_FACTORS[Math.min(daysOld, SPEED_FACTORS.length - 1)]; // Adjust speed factor selection
+                    const speedFactor = SPEED_FACTORS[Math.min(daysOld, DATE_RANGE)];
                     const orbitAngle = Math.random() * 2 * Math.PI;
                     const brightness = 100 - (daysOld * (100 / DATE_RANGE)); // Calculate brightness based on days old
 
