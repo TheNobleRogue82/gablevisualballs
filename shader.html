@@ -87,9 +87,9 @@
                     alpha += intensity;
                 }
 
-                // Fallback to a simple visible color if no halos are visible
+                // Fallback to a bright red color if no halos are visible
                 if (alpha == 0.0) {
-                    color = vec3(0.2, 0.3, 0.8);
+                    color = vec3(1.0, 0.0, 0.0);
                     alpha = 1.0;
                 }
 
