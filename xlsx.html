@@ -103,7 +103,7 @@
                     ctx.shadowBlur = 0;
 
                     // Add an inner glow effect along the edge of the circle
-                    const gradient = ctx.createRadialGradient(this.x, this.y, this.radius * 0.8, this.x, this.y, this.radius);
+                    const gradient = ctx.createRadialGradient(this.x, this.y, this.radius * 0.85, this.x, this.y, this.radius);
                     gradient.addColorStop(0, 'rgba(100, 150, 255, 0)');
                     gradient.addColorStop(1, 'rgba(50, 100, 237, 0.7)');
                     ctx.fillStyle = gradient;
@@ -149,7 +149,7 @@
                         ((amount - MIN_AMOUNT) / (MAX_AMOUNT - MIN_AMOUNT)) * (MAX_DIAMETER - MIN_DIAMETER) + MIN_DIAMETER));
                     const speedFactor = SPEED_FACTORS[Math.min(daysOld, DATE_RANGE)];
                     const orbitAngle = Math.random() * 2 * Math.PI;
-                    const brightness = 100 - (daysOld * (100 / DATE_RANGE)); // Calculate brightness based on days old
+                    //const brightness = 100 - (daysOld * (100 / DATE_RANGE)); // Calculate brightness based on days old
 
                     const ball = new Ball(diameter, speedFactor, orbitAngle);
                     ball.brightness = brightness;
@@ -170,7 +170,7 @@
             ctx.fillStyle = "black";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.shadowBlur = 20; // Reduce shadowBlur for the 'G' to create a more defined glow
+            ctx.shadowBlur = 10; // shadowBlur for the 'G'
             ctx.shadowColor = "rgba(100, 149, 237, 2.5)"; // Bright blueish-white glow for 'G'
             ctx.fillText("G", centerX, centerY);
             ctx.shadowBlur = 0; // Reset shadowBlur after drawing
@@ -222,7 +222,7 @@
                 })
                 .catch(error => console.error('Error fetching XLSX:', error));
 
-            // Set interval to refresh data every 3 minutes without resetting positions
+            // Set interval to refresh data every 60 minutes 
             setInterval(refreshData, 60 * 60 * 1000);
         };
     </script>
