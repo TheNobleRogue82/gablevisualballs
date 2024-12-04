@@ -25,6 +25,7 @@
     <script>
         const canvas = document.getElementById('ballCanvas');
         const gl = canvas.getContext('webgl');
+        const ctx2d = canvas.getContext('2d'); // 2D context to draw the 'G'
         canvas.width = window.innerWidth || document.documentElement.clientWidth;
         canvas.height = window.innerHeight || document.documentElement.clientHeight;
 
@@ -42,12 +43,13 @@
             precision mediump float;
             attribute vec2 a_position;
             uniform vec2 u_resolution;
+            uniform float u_size;
             void main() {
                 vec2 zeroToOne = a_position / u_resolution;
                 vec2 zeroToTwo = zeroToOne * 2.0;
                 vec2 clipSpace = zeroToTwo - 1.0;
                 gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
-                gl_PointSize = 20.0; // Increased point size for better visibility
+                gl_PointSize = u_size; // Dynamic point size
             }
         `;
 
@@ -96,6 +98,7 @@
         const positionAttributeLocation = gl.getAttribLocation(program, "a_position");
         const resolutionUniformLocation = gl.getUniformLocation(program, "u_resolution");
         const timeUniformLocation = gl.getUniformLocation(program, "u_time");
+        const sizeUniformLocation = gl.getUniformLocation(program, "u_size");
 
         const positionBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
@@ -111,11 +114,22 @@
             return false;
         }
 
+        function drawG() {
+            ctx2d.clearRect(0, 0, canvas.width, canvas.height);
+            ctx2d.font = "bold 200px 'FutoSansHeavy', Arial, sans-serif";
+            ctx2d.fillStyle = "rgba(255, 255, 255, 0.5)";
+            ctx2d.textAlign = "center";
+            ctx2d.textBaseline = "middle";
+            ctx2d.fillText("G", canvas.width / 2, canvas.height / 2);
+        }
+
         function render(time) {
             resizeCanvasToDisplaySize(gl.canvas);
+            drawG(); // Draw the 'G' in the center of the canvas
+
             gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
-            gl.clearColor(0, 0, 0, 1);
+            gl.clearColor(0, 0, 0, 0);
             gl.clear(gl.COLOR_BUFFER_BIT);
 
             gl.useProgram(program);
@@ -128,16 +142,23 @@
             gl.uniform1f(timeUniformLocation, time * 0.001);
 
             if (ballPositions.length > 0) {
-                gl.drawArrays(gl.POINTS, 0, ballPositions.length / 2);
+                for (let i = 0; i < ballPositions.length; i += 2) {
+                    const amount = ballAmounts[i / 2];
+                    const size = Math.max(10.0, Math.min(50.0, (amount / 5000000) * 50)); // Dynamic size based on amount
+                    gl.uniform1f(sizeUniformLocation, size);
+                    gl.drawArrays(gl.POINTS, i / 2, 1);
+                }
             }
 
             requestAnimationFrame(render);
         }
 
         let ballPositions = [];
+        let ballAmounts = [];
 
         function loadBallsFromData(data) {
             ballPositions = [];
+            ballAmounts = [];
             const today = new Date();
             data.forEach(record => {
                 try {
@@ -176,6 +197,7 @@
                     const x = canvas.width / 2 + orbitRadius * Math.cos(orbitAngle);
                     const y = canvas.height / 2 + orbitRadius * Math.sin(orbitAngle);
                     ballPositions.push(x, y);
+                    ballAmounts.push(amount);
 
                 } catch (e) {
                     console.error("Error processing record: ", record, e);
