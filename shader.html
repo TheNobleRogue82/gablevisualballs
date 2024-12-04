@@ -153,9 +153,9 @@
             if (ballPositions.length > 0) {
                 for (let i = 0; i < ballPositions.length; i += 2) {
                     const daysOld = ballDaysOld[i / 2];
-                    const speedFactor = 1 - (daysOld / 7); // Closer to today means faster speed
+                    const speedFactor = (7 - daysOld) / 7; // Closer to today means faster speed (range from 0 to 1)
                     const orbitRadius = originalOrbitRadii[i / 2];
-                    const orbitAngle = (time * 0.001 * speedFactor + initialAngles[i / 2]) % (2 * Math.PI);
+                    const orbitAngle = (time * 0.0005 * speedFactor + initialAngles[i / 2]) % (2 * Math.PI);
                     const x = ballCanvas.width / 2 + orbitRadius * Math.cos(orbitAngle);
                     const y = ballCanvas.height / 2 + orbitRadius * Math.sin(orbitAngle);
 
@@ -166,7 +166,7 @@
 
                 for (let i = 0; i < ballPositions.length; i += 2) {
                     const amount = ballAmounts[i / 2];
-                    const size = Math.max(20.0, Math.min(100.0, (amount / 5000000) * 100)); // Dynamic size based on amount
+                    const size = Math.max(50.0, Math.min(400.0, (amount / 5000000) * 400)); // Dynamic size between 50px and 400px based on amount
                     gl.uniform1f(sizeUniformLocation, size);
                     gl.drawArrays(gl.POINTS, i / 2, 1);
                 }
