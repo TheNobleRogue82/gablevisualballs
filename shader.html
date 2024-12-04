@@ -55,7 +55,7 @@
             }
         `;
 
-        // Fragment shader source (simplified for testing visibility)
+        // Fragment shader source (updated for debugging halos)
         const fragmentShaderSource = `
             precision mediump float;
             uniform vec2 u_resolution;
@@ -81,7 +81,7 @@
 
                     float dist = length(st - haloPos);
                     float intensity = smoothstep(size * 0.5, 0.0, dist);
-                    color += vec3(1.0, 0.5, 0.1) * intensity; // Brighter color for better visibility
+                    color += vec3(1.0, 0.5, float(i) / 100.0) * intensity; // Different color for each halo to aid debugging
                     alpha += intensity;
                 }
 
