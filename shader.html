@@ -62,21 +62,18 @@
             }
         `;
 
-        // Fragment shader source (creates glow effect similar to ShaderToy)
+        // Fragment shader source (improved glow effect)
         const fragmentShaderSource = `
             precision mediump float;
-            uniform float u_time;
             void main() {
                 vec2 st = gl_PointCoord - vec2(0.5);
-                float dist = length(st) * 2.0;
-                float intensity = exp(-dist * dist * 4.0);
+                float dist = length(st);
+                float intensity = exp(-dist * dist * 20.0);
                 vec3 color1 = vec3(0.611765, 0.262745, 0.996078);
                 vec3 color2 = vec3(0.298039, 0.760784, 0.913725);
                 vec3 color3 = vec3(0.062745, 0.078431, 0.600000);
-                float ang = atan(st.y, st.x);
-                float cl = cos(ang + u_time * 2.0) * 0.5 + 0.5;
-                vec3 color = mix(color1, color2, cl);
-                color = mix(color3, color, intensity);
+                vec3 color = mix(color1, color2, 0.5);
+                color = mix(color, color3, dist);
                 gl_FragColor = vec4(color, intensity);
             }
         `;
@@ -113,7 +110,6 @@
         const positionAttributeLocation = gl.getAttribLocation(program, "a_position");
         const resolutionUniformLocation = gl.getUniformLocation(program, "u_resolution");
         const sizeUniformLocation = gl.getUniformLocation(program, "u_size");
-        const timeUniformLocation = gl.getUniformLocation(program, "u_time");
 
         const positionBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
@@ -156,7 +152,6 @@
             gl.vertexAttribPointer(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0);
 
             gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
-            gl.uniform1f(timeUniformLocation, time * 0.001);
 
             if (ballPositions.length > 0) {
                 for (let i = 0; i < ballPositions.length; i += 2) {
