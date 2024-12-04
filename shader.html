@@ -62,15 +62,15 @@
             }
         `;
 
-        // Fragment shader source (creates glow effect)
+        // Fragment shader source (creates glow effect similar to ShaderToy)
         const fragmentShaderSource = `
             precision mediump float;
             uniform float u_time;
             void main() {
-                vec2 st = gl_PointCoord;
-                float dist = distance(st, vec2(0.5));
-                float glow = exp(-dist * 15.0) * 0.8;
-                vec3 color = vec3(0.1, 0.2, 0.8) * glow;
+                vec2 st = gl_PointCoord - vec2(0.5);
+                float dist = length(st) * 2.0;
+                float intensity = exp(-dist * dist * 4.0) * 0.8;
+                vec3 color = vec3(0.2, 0.4, 1.0) * intensity;
                 gl_FragColor = vec4(color, 1.0);
             }
         `;
@@ -126,7 +126,9 @@
         function drawG() {
             ctx2d.clearRect(0, 0, gCanvas.width, gCanvas.height);
             ctx2d.font = "bold 200px 'FutoSansHeavy', Arial, sans-serif";
-            ctx2d.fillStyle = "rgba(255, 255, 255, 0.5)";
+            ctx2d.fillStyle = "rgba(0, 102, 255, 0.8)";
+            ctx2d.shadowColor = "rgba(0, 102, 255, 1)";
+            ctx2d.shadowBlur = 40;
             ctx2d.textAlign = "center";
             ctx2d.textBaseline = "middle";
             ctx2d.fillText("G", gCanvas.width / 2, gCanvas.height / 2);
@@ -134,7 +136,7 @@
 
         function render(time) {
             resizeCanvasToDisplaySize(ballCanvas);
-            drawG(); // Draw the 'G' in the center of the canvas
+            drawG(); // Draw the glowing 'G' in the center of the canvas
 
             gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
@@ -153,7 +155,7 @@
             if (ballPositions.length > 0) {
                 for (let i = 0; i < ballPositions.length; i += 2) {
                     const daysOld = ballDaysOld[i / 2];
-                    const speedFactor = (7 - daysOld) / 7; // Closer to today means faster speed (range from 0 to 1)
+                    const speedFactor = Math.max(0.1, (7 - daysOld) / 7); // Ensure speed is non-zero, closer to today means faster speed
                     const orbitRadius = originalOrbitRadii[i / 2];
                     const orbitAngle = (time * 0.0005 * speedFactor + initialAngles[i / 2]) % (2 * Math.PI);
                     const x = ballCanvas.width / 2 + orbitRadius * Math.cos(orbitAngle);
