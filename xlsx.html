@@ -103,7 +103,7 @@
                     ctx.shadowBlur = 0;
 
                     // Add an inner glow effect along the edge of the circle
-                    const gradient = ctx.createRadialGradient(this.x, this.y, this.radius * 0.9, this.x, this.y, this.radius);
+                    const gradient = ctx.createRadialGradient(this.x, this.y, this.radius * 0.8, this.x, this.y, this.radius);
                     gradient.addColorStop(0, 'rgba(100, 150, 255, 0)');
                     gradient.addColorStop(1, 'rgba(50, 100, 237, 0.7)');
                     ctx.fillStyle = gradient;
