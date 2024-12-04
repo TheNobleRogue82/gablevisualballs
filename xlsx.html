@@ -97,10 +97,20 @@
                     ctx.closePath();
 
                     // Draw the glow effect
-                    ctx.shadowBlur = 30; // Increase shadowBlur for brighter glow effect
-                    ctx.shadowColor = `rgba(100, 149, 237, 4)`; // Make glow brighter // Bright blueish-white glow
+                    ctx.shadowBlur = 15; // Reduced shadowBlur for a subtle glow effect
+                    ctx.shadowColor = `rgba(100, 149, 237, 0.7)`; // Softer glow effect
                     ctx.fill();
                     ctx.shadowBlur = 0;
+
+                    // Add an inner glow effect along the edge of the circle
+                    const gradient = ctx.createRadialGradient(this.x, this.y, this.radius * 0.9, this.x, this.y, this.radius);
+                    gradient.addColorStop(0, 'rgba(255, 255, 255, 0)');
+                    gradient.addColorStop(1, 'rgba(100, 149, 237, 0.5)');
+                    ctx.fillStyle = gradient;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.closePath();
                 }
             }
         }
@@ -213,7 +223,7 @@
                 .catch(error => console.error('Error fetching XLSX:', error));
 
             // Set interval to refresh data every 3 minutes without resetting positions
-            setInterval(refreshData, 3 * 60 * 1000);
+            setInterval(refreshData, 60 * 60 * 1000);
         };
     </script>
 </body>
