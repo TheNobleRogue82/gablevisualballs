@@ -152,8 +152,19 @@
 
             if (ballPositions.length > 0) {
                 for (let i = 0; i < ballPositions.length; i += 2) {
+                    const orbitRadius = originalOrbitRadii[i / 2];
+                    const orbitAngle = (time * 0.001 + initialAngles[i / 2]) % (2 * Math.PI);
+                    const x = ballCanvas.width / 2 + orbitRadius * Math.cos(orbitAngle);
+                    const y = ballCanvas.height / 2 + orbitRadius * Math.sin(orbitAngle);
+
+                    ballPositions[i] = x;
+                    ballPositions[i + 1] = y;
+                }
+                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(ballPositions), gl.STATIC_DRAW);
+
+                for (let i = 0; i < ballPositions.length; i += 2) {
                     const amount = ballAmounts[i / 2];
-                    const size = Math.max(10.0, Math.min(50.0, (amount / 5000000) * 50)); // Dynamic size based on amount
+                    const size = Math.max(15.0, Math.min(70.0, (amount / 5000000) * 70)); // Dynamic size based on amount
                     gl.uniform1f(sizeUniformLocation, size);
                     gl.drawArrays(gl.POINTS, i / 2, 1);
                 }
@@ -164,10 +175,14 @@
 
         let ballPositions = [];
         let ballAmounts = [];
+        let originalOrbitRadii = [];
+        let initialAngles = [];
 
         function loadBallsFromData(data) {
             ballPositions = [];
             ballAmounts = [];
+            originalOrbitRadii = [];
+            initialAngles = [];
             const today = new Date();
             data.forEach(record => {
                 try {
@@ -200,13 +215,15 @@
                         return;
                     }
 
-                    // Calculate position based on the data
+                    // Calculate initial position and orbit radius based on the data
                     const orbitAngle = Math.random() * 2 * Math.PI;
                     const orbitRadius = Math.min(ballCanvas.width, ballCanvas.height) / 3 * (0.5 + Math.random());
                     const x = ballCanvas.width / 2 + orbitRadius * Math.cos(orbitAngle);
                     const y = ballCanvas.height / 2 + orbitRadius * Math.sin(orbitAngle);
                     ballPositions.push(x, y);
                     ballAmounts.push(amount);
+                    originalOrbitRadii.push(orbitRadius);
+                    initialAngles.push(orbitAngle);
 
                 } catch (e) {
                     console.error("Error processing record: ", record, e);
