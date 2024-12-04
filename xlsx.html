@@ -114,7 +114,7 @@
                     // Add an inner glow effect along the edge of the circle
                     const gradient = ctx.createRadialGradient(this.x, this.y, this.radius * 0.5, this.x, this.y, this.radius);
                     gradient.addColorStop(0, `rgba(255, 255, 255, ${0.1 * glowIntensity})`);
-                    gradient.addColorStop(1, `rgba(100, 149, 237, ${0.4 * glowIntensity})`);
+                    gradient.addColorStop(1, `rgba(100, 149, 237, ${0.1 * glowIntensity})`);
                     ctx.fillStyle = gradient;
                     ctx.beginPath();
                     ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
