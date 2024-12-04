@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tremble's Pebbles</title>
     <style>
-        
         @font-face {
             font-family: 'FutoSansHeavy';
             src: url('https://gabledatavisual.blob.core.windows.net/data/futo-sans-heavy.ttf') format('truetype');
@@ -63,7 +62,7 @@
             });
         }
 
-        initializeStars(); // Draw stars once during initialization // Reset alpha
+        initializeStars(); // Draw stars once during initialization
 
         class Ball {
             constructor(diameter, speedFactor, orbitAngle) {
@@ -88,24 +87,34 @@
             }
 
             draw() {
+                // Calculate the distance from the center
+                const distanceFromCenter = Math.sqrt((this.x - centerX) ** 2 + (this.y - centerY) ** 2);
+                const maxDistance = Math.sqrt((canvas.width / 2) ** 2 + (canvas.height / 2) ** 2);
+                const glowIntensity = 1 - (distanceFromCenter / maxDistance); // Normalize glow intensity to be between 0 and 1
+
                 // Ensure valid values for gradient to avoid non-finite errors
                 if (isFinite(this.x) && isFinite(this.y) && isFinite(this.radius)) {
+                    // Draw the ball
                     ctx.fillStyle = 'black';
                     ctx.beginPath();
                     ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.closePath();
 
-                    // Draw the glow effect
-                    ctx.shadowBlur = 15; // Reduced shadowBlur for a subtle glow effect
-                    ctx.shadowColor = rgba(100, 149, 237, 0.7); // Softer glow effect
+                    // Draw the halo glow effect around the ball
+                    ctx.shadowBlur = 30 * glowIntensity + 20; // Increase shadowBlur closer to the center
+                    ctx.shadowColor = `rgba(100, 149, 237, ${0.5 * glowIntensity + 0.2})`; // Adjust opacity based on distance from center
+                    ctx.fillStyle = 'rgba(100, 149, 237, 0.2)';
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
                     ctx.fill();
+                    ctx.closePath();
                     ctx.shadowBlur = 0;
 
                     // Add an inner glow effect along the edge of the circle
-                    const gradient = ctx.createRadialGradient(this.x, this.y, this.radius * 0.9, this.x, this.y, this.radius);
-                    gradient.addColorStop(0, 'rgba(255, 255, 255, 0)');
-                    gradient.addColorStop(1, 'rgba(100, 149, 237, 0.5)');
+                    const gradient = ctx.createRadialGradient(this.x, this.y, this.radius * 0.5, this.x, this.y, this.radius);
+                    gradient.addColorStop(0, `rgba(255, 255, 255, ${0.1 * glowIntensity})`);
+                    gradient.addColorStop(1, `rgba(100, 149, 237, ${0.4 * glowIntensity})`);
                     ctx.fillStyle = gradient;
                     ctx.beginPath();
                     ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
@@ -119,13 +128,14 @@
             const today = new Date();
             data.forEach(record => {
                 try {
-                    // Parse the date field safely
-                    if (!record['Orders[OrderDate]']) {
+                    // Handle possible variations in field names
+                    const dateField = record['OpenOrder[OrderDate]'] || record['OrderDate'] || record['Date'];
+                    if (!dateField) {
                         console.warn('Skipping record due to missing date:', record);
                         return;
                     }
                     // Convert Excel serial date to JavaScript Date
-                    const excelDate = record['Orders[OrderDate]'];
+                    const excelDate = dateField;
                     const date = new Date((excelDate - 25569) * 86400 * 1000); // 25569 is the offset to Unix epoch time
                     const daysOld = Math.floor((today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
                     if (daysOld > DATE_RANGE) {
@@ -133,8 +143,8 @@
                         return;
                     }
 
-                    // Parse the amount safely
-                    const amountField = record['[SumOrderSubtotal]']; // Handle different possible field names
+                    // Handle possible variations in amount field names
+                    const amountField = record['[SumOrderTotal]'] || record['SumOrderSubtotal'] || record['Amount'];
                     if (typeof amountField !== 'number') {
                         console.warn('Skipping record due to invalid amount type:', record);
                         return;
@@ -187,7 +197,7 @@
             fetch('https://gabledatavisual.blob.core.windows.net/data/pebbles.xlsx')
                 .then(response => {
                     if (!response.ok) {
-                        throw new Error(HTTP error! status: ${response.status});
+                        throw new Error(`HTTP error! status: ${response.status}`);
                     }
                     return response.arrayBuffer();
                 })
@@ -207,7 +217,7 @@
             fetch('https://gabledatavisual.blob.core.windows.net/data/pebbles.xlsx')
                 .then(response => {
                     if (!response.ok) {
-                        throw new Error(HTTP error! status: ${response.status});
+                        throw new Error(`HTTP error! status: ${response.status}`);
                     }
                     return response.arrayBuffer();
                 })
