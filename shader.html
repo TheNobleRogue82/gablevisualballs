@@ -152,8 +152,10 @@
 
             if (ballPositions.length > 0) {
                 for (let i = 0; i < ballPositions.length; i += 2) {
+                    const daysOld = ballDaysOld[i / 2];
+                    const speedFactor = 1 - (daysOld / 7); // Closer to today means faster speed
                     const orbitRadius = originalOrbitRadii[i / 2];
-                    const orbitAngle = (time * 0.001 + initialAngles[i / 2]) % (2 * Math.PI);
+                    const orbitAngle = (time * 0.001 * speedFactor + initialAngles[i / 2]) % (2 * Math.PI);
                     const x = ballCanvas.width / 2 + orbitRadius * Math.cos(orbitAngle);
                     const y = ballCanvas.height / 2 + orbitRadius * Math.sin(orbitAngle);
 
@@ -164,7 +166,7 @@
 
                 for (let i = 0; i < ballPositions.length; i += 2) {
                     const amount = ballAmounts[i / 2];
-                    const size = Math.max(15.0, Math.min(70.0, (amount / 5000000) * 70)); // Dynamic size based on amount
+                    const size = Math.max(20.0, Math.min(100.0, (amount / 5000000) * 100)); // Dynamic size based on amount
                     gl.uniform1f(sizeUniformLocation, size);
                     gl.drawArrays(gl.POINTS, i / 2, 1);
                 }
@@ -177,12 +179,14 @@
         let ballAmounts = [];
         let originalOrbitRadii = [];
         let initialAngles = [];
+        let ballDaysOld = [];
 
         function loadBallsFromData(data) {
             ballPositions = [];
             ballAmounts = [];
             originalOrbitRadii = [];
             initialAngles = [];
+            ballDaysOld = [];
             const today = new Date();
             data.forEach(record => {
                 try {
@@ -198,7 +202,7 @@
                     const excelDate = record['OpenOrder[OrderDate]'];
                     const date = new Date((excelDate - 25569) * 86400 * 1000); // 25569 is the offset to Unix epoch time
                     const daysOld = Math.floor((today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-                    if (daysOld > 30) {  // Update to include records from the last 30 days
+                    if (daysOld > 7) {  // Only include records from the last 7 days
                         console.log('Skipping record due to date range:', record);
                         return;
                     }
@@ -224,6 +228,7 @@
                     ballAmounts.push(amount);
                     originalOrbitRadii.push(orbitRadius);
                     initialAngles.push(orbitAngle);
+                    ballDaysOld.push(daysOld);
 
                 } catch (e) {
                     console.error("Error processing record: ", record, e);
