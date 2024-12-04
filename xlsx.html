@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tremble's Pebbles</title>
+    <style>
+        
+        @font-face {
+            font-family: 'FutoSansHeavy';
+            src: url('https://gabledatavisual.blob.core.windows.net/data/futo-sans-heavy.ttf') format('truetype');
+        }
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+            background: black;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="ballCanvas"></canvas>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script>
+        const canvas = document.getElementById('ballCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth || document.documentElement.clientWidth;
+        canvas.height = window.innerHeight || document.documentElement.clientHeight;
+
+        const MAX_DIAMETER = 4000;
+        const MIN_DIAMETER = 10;
+        const MAX_AMOUNT = 5000000;
+        const MIN_AMOUNT = 1000;
+        const DATE_RANGE = 30;
+        const SPEED_FACTORS = [10, 9, 7, 5.5, 4, 2.5, 1, 0.5];
+        const balls = [];
+
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const orbitRadius = Math.min(canvas.width, canvas.height) / 3;
+
+        // Function to draw a starry background
+        const stars = [];
+        function initializeStars() {
+            const numStars = 200;
+            for (let i = 0; i < numStars; i++) {
+                const x = Math.random() * canvas.width;
+                const y = Math.random() * canvas.height;
+                const radius = Math.random() * 1.5;
+                stars.push({ x, y, radius });
+            }
+        }
+
+        function drawStars() {
+            ctx.fillStyle = 'white';
+            stars.forEach(star => {
+                ctx.beginPath();
+                ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.closePath();
+            });
+        }
+
+        initializeStars(); // Draw stars once during initialization // Reset alpha
+
+        class Ball {
+            constructor(diameter, speedFactor, orbitAngle) {
+                this.diameter = diameter;
+                this.radius = diameter / 2;
+                this.orbitAngle = orbitAngle;
+                this.orbitRadius = orbitRadius * (0.5 + Math.random()); // Randomize distance from the center for more variation
+                this.orbitSpeed = speedFactor * 0.001; // Adjust speed factor to control orbit speed
+                this.brightness = 50; // Initial brightness
+            }
+
+            update() {
+                // Update orbit angle
+                this.orbitAngle += this.orbitSpeed;
+                if (this.orbitAngle >= 2 * Math.PI) {
+                    this.orbitAngle -= 2 * Math.PI;
+                }
+
+                // Calculate new position based on orbit
+                this.x = centerX + this.orbitRadius * Math.cos(this.orbitAngle);
+                this.y = centerY + this.orbitRadius * Math.sin(this.orbitAngle);
+            }
+
+            draw() {
+                // Ensure valid values for gradient to avoid non-finite errors
+                if (isFinite(this.x) && isFinite(this.y) && isFinite(this.radius)) {
+                    ctx.fillStyle = 'black';
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.closePath();
+
+                    // Draw the glow effect
+                    ctx.shadowBlur = 30; // Increase shadowBlur for brighter glow effect
+                    ctx.shadowColor = `rgba(100, 149, 237, 4)`; // Make glow brighter // Bright blueish-white glow
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                }
+            }
+        }
+
+        function loadBallsFromData(data) {
+            const today = new Date();
+            data.forEach(record => {
+                try {
+                    // Parse the date field safely
+                    if (!record['Orders[OrderDate]']) {
+                        console.warn('Skipping record due to missing date:', record);
+                        return;
+                    }
+                    const date = new Date(Date.parse(record['Orders[OrderDate]']));
+                    const daysOld = Math.floor((today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+                    if (daysOld > DATE_RANGE) {
+                        console.log('Skipping record due to date range:', record);
+                        return;
+                    }
+
+                    // Parse the amount safely
+                    const amountField = record['[SumOrderSubtotal]']; // Handle different possible field names
+                    if (!amountField) {
+                        console.warn('Skipping record due to missing amount:', record);
+                        return;
+                    }
+                    const amount = parseFloat(amountField.replace(/[$,]/g, ''));
+                    if (isNaN(amount) || amount < 1000) {
+                        console.warn('Skipping record due to invalid or insufficient amount:', record);
+                        return;
+                    }
+
+                    const diameter = Math.max(MIN_DIAMETER, Math.min(MAX_DIAMETER,
+                        ((amount - MIN_AMOUNT) / (MAX_AMOUNT - MIN_AMOUNT)) * (MAX_DIAMETER - MIN_DIAMETER) + MIN_DIAMETER));
+                    const speedFactor = SPEED_FACTORS[Math.min(daysOld, DATE_RANGE)];
+                    const orbitAngle = Math.random() * 2 * Math.PI;
+                    const brightness = 100 - (daysOld * (100 / DATE_RANGE)); // Calculate brightness based on days old
+
+                    const ball = new Ball(diameter, speedFactor, orbitAngle);
+                    ball.brightness = brightness;
+                    balls.push(ball);
+
+                } catch (e) {
+                    console.error("Error processing record: ", record, e);
+                }
+            });
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawStars(); // Draw the static starry background
+
+            // Draw the central "G" character
+            ctx.font = "bold 100px FutoSansHeavy, Arial, sans-serif";
+            ctx.fillStyle = "black";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.shadowBlur = 20; // Reduce shadowBlur for the 'G' to create a more defined glow
+            ctx.shadowColor = "rgba(100, 149, 237, 2.5)"; // Bright blueish-white glow for 'G'
+            ctx.fillText("G", centerX, centerY);
+            ctx.shadowBlur = 0; // Reset shadowBlur after drawing
+
+            // Draw and update all balls
+            balls.forEach(ball => {
+                ball.update();
+                ball.draw();
+            });
+            requestAnimationFrame(animate);
+        }
+
+        function refreshData() {
+            fetch('https://gabledatavisual.blob.core.windows.net/data/data.xlsx')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.arrayBuffer();
+                })
+                .then(data => {
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                    console.log('Parsed XLSX Data:', jsonData);
+                    balls.length = 0; // Clear existing balls array
+                    loadBallsFromData(jsonData); // Load new data without resetting positions
+                })
+                .catch(error => console.error('Error fetching XLSX:', error));
+        }
+
+        window.onload = () => {
+            fetch('https://gabledatavisual.blob.core.windows.net/data/data.xlsx')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.arrayBuffer();
+                })
+                .then(data => {
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                    console.log('Parsed XLSX Data:', jsonData);
+                    loadBallsFromData(jsonData);
+                    animate();  // Start the animation directly
+                })
+                .catch(error => console.error('Error fetching XLSX:', error));
+
+            // Set interval to refresh data every 3 minutes without resetting positions
+            setInterval(refreshData, 3 * 60 * 1000);
+        };
+    </script>
+</body>
+</html>
