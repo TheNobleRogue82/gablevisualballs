@@ -55,7 +55,7 @@
             }
         `;
 
-        // Fragment shader source (updated to use halo data)
+        // Fragment shader source (simplified for testing visibility)
         const fragmentShaderSource = `
             precision mediump float;
             uniform vec2 u_resolution;
@@ -81,8 +81,14 @@
 
                     float dist = length(st - haloPos);
                     float intensity = smoothstep(size * 0.5, 0.0, dist);
-                    color += vec3(1.0, 0.7, 0.2) * intensity; // Brighter color for better visibility
+                    color += vec3(1.0, 0.5, 0.1) * intensity; // Brighter color for better visibility
                     alpha += intensity;
+                }
+
+                // Fallback to a simple visible color if no halos are visible
+                if (alpha == 0.0) {
+                    color = vec3(0.2, 0.3, 0.8);
+                    alpha = 1.0;
                 }
 
                 gl_FragColor = vec4(color, min(alpha, 1.0));
