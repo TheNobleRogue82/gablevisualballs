@@ -30,7 +30,7 @@
     <script>
         const gCanvas = document.getElementById('gCanvas');
         const ballCanvas = document.getElementById('ballCanvas');
-        const ctx2d = gCanvas.getContext('2d'); // 2D context to draw the 'G'
+        const ctx2d = gCanvas.getContext('2d');
         const gl = ballCanvas.getContext('webgl');
 
         gCanvas.width = window.innerWidth || document.documentElement.clientWidth;
@@ -49,30 +49,46 @@
 
         // Vertex shader source
         const vertexShaderSource = `
-            precision mediump float;
             attribute vec2 a_position;
-            uniform vec2 u_resolution;
-            uniform float u_size;
             void main() {
-                vec2 zeroToOne = a_position / u_resolution;
-                vec2 zeroToTwo = zeroToOne * 2.0;
-                vec2 clipSpace = zeroToTwo - 1.0;
-                gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
-                gl_PointSize = u_size; // Dynamic point size
+                gl_Position = vec4(a_position, 0, 1);
             }
         `;
 
-        // Fragment shader source (improved circular glow effect)
+        // Fragment shader source
         const fragmentShaderSource = `
             precision mediump float;
+            uniform vec2 u_resolution;
+            uniform float u_time;
+            uniform int u_numHalos;
+            uniform vec3 u_haloData[100]; // max 100 halos: (radius, angle speed factor, size)
+
+            vec3 color1 = vec3(0.611765, 0.262745, 0.996078);
+            vec3 color2 = vec3(0.298039, 0.760784, 0.913725);
+
             void main() {
-                vec2 st = gl_PointCoord - vec2(0.5);
-                float dist = length(st) * 2.0;
-                float alpha = smoothstep(0.5, 0.0, dist); // Create a smooth circular gradient with transparency
-                vec3 color1 = vec3(0.611765, 0.262745, 0.996078);
-                vec3 color2 = vec3(0.298039, 0.760784, 0.913725);
-                vec3 color = mix(color1, color2, 0.5);
-                gl_FragColor = vec4(color, alpha * 0.8); // Apply alpha to make the edge glow softer
+                vec2 st = (gl_FragCoord.xy / u_resolution) * 2.0 - 1.0;
+                st.x *= u_resolution.x / u_resolution.y;
+
+                vec3 color = vec3(0.0);
+                float alpha = 0.0;
+
+                for (int i = 0; i < 100; i++) {
+                    if (i >= u_numHalos) break;
+                    float radius = u_haloData[i].x;
+                    float speedFactor = u_haloData[i].y;
+                    float size = u_haloData[i].z;
+
+                    float angle = u_time * speedFactor;
+                    vec2 haloPos = vec2(cos(angle), sin(angle)) * radius;
+
+                    float dist = length(st - haloPos);
+                    float intensity = smoothstep(size * 0.5, 0.0, dist);
+                    color += mix(color1, color2, intensity) * intensity;
+                    alpha += intensity;
+                }
+
+                gl_FragColor = vec4(color, alpha * 0.8);
             }
         `;
 
@@ -91,7 +107,7 @@
         function createProgram(gl, vertexShader, fragmentShader) {
             const program = gl.createProgram();
             gl.attachShader(program, vertexShader);
-            gl.attachShader(program, fragmentShader);
+            gl.attachShader(fragmentShader);
             gl.linkProgram(program);
             const success = gl.getProgramParameter(program, gl.LINK_STATUS);
             if (success) {
@@ -105,12 +121,22 @@
         const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
         const program = createProgram(gl, vertexShader, fragmentShader);
 
-        const positionAttributeLocation = gl.getAttribLocation(program, "a_position");
-        const resolutionUniformLocation = gl.getUniformLocation(program, "u_resolution");
-        const sizeUniformLocation = gl.getUniformLocation(program, "u_size");
-
         const positionBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+            -1, -1,
+             1, -1,
+            -1,  1,
+            -1,  1,
+             1, -1,
+             1,  1,
+        ]), gl.STATIC_DRAW);
+
+        const positionAttributeLocation = gl.getAttribLocation(program, "a_position");
+        const resolutionUniformLocation = gl.getUniformLocation(program, "u_resolution");
+        const timeUniformLocation = gl.getUniformLocation(program, "u_time");
+        const numHalosUniformLocation = gl.getUniformLocation(program, "u_numHalos");
+        const haloDataUniformLocation = gl.getUniformLocation(program, "u_haloData");
 
         function resizeCanvasToDisplaySize(canvas) {
             const displayWidth = canvas.clientWidth;
@@ -150,50 +176,24 @@
             gl.vertexAttribPointer(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0);
 
             gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
+            gl.uniform1f(timeUniformLocation, time * 0.001);
+            gl.uniform1i(numHalosUniformLocation, Math.min(ballAmounts.length, 100));
+            gl.uniform3fv(haloDataUniformLocation, haloData);
 
-            if (ballPositions.length > 0) {
-                for (let i = 0; i < ballPositions.length; i += 2) {
-                    const daysOld = ballDaysOld[i / 2];
-                    const speedFactor = Math.max(0.1, (7 - daysOld) / 7); // Ensure speed is non-zero, closer to today means faster speed
-                    const orbitRadius = originalOrbitRadii[i / 2];
-                    const orbitAngle = (time * 0.0005 * speedFactor + initialAngles[i / 2]) % (2 * Math.PI);
-                    const x = ballCanvas.width / 2 + orbitRadius * Math.cos(orbitAngle);
-                    const y = ballCanvas.height / 2 + orbitRadius * Math.sin(orbitAngle);
-
-                    ballPositions[i] = x;
-                    ballPositions[i + 1] = y;
-                }
-                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(ballPositions), gl.STATIC_DRAW);
-
-                for (let i = 0; i < ballPositions.length; i += 2) {
-                    const amount = ballAmounts[i / 2];
-                    const size = Math.max(50.0, Math.min(400.0, (amount / 5000000) * 400)); // Dynamic size between 50px and 400px based on amount
-                    gl.uniform1f(sizeUniformLocation, size);
-                    gl.drawArrays(gl.POINTS, i / 2, 1);
-                }
-            }
+            gl.drawArrays(gl.TRIANGLES, 0, 6);
 
             requestAnimationFrame(render);
         }
 
-        let ballPositions = [];
         let ballAmounts = [];
-        let originalOrbitRadii = [];
-        let initialAngles = [];
-        let ballDaysOld = [];
+        let haloData = new Float32Array(300); // max 100 halos, each with (radius, speed factor, size)
 
         function loadBallsFromData(data) {
-            ballPositions = [];
             ballAmounts = [];
-            originalOrbitRadii = [];
-            initialAngles = [];
-            ballDaysOld = [];
             const today = new Date();
+            let haloIndex = 0;
             data.forEach(record => {
                 try {
-                    // Log all fields in the current record to see what is available
-                    console.log('Record Fields:', record);
-
                     // Parse the date field safely
                     if (!record['OpenOrder[OrderDate]']) {
                         console.warn('Skipping record due to missing date:', record);
@@ -220,23 +220,24 @@
                         return;
                     }
 
-                    // Calculate initial position and orbit radius based on the data
-                    const orbitAngle = Math.random() * 2 * Math.PI;
-                    const orbitRadius = Math.min(ballCanvas.width, ballCanvas.height) / 3 * (0.5 + Math.random());
-                    const x = ballCanvas.width / 2 + orbitRadius * Math.cos(orbitAngle);
-                    const y = ballCanvas.height / 2 + orbitRadius * Math.sin(orbitAngle);
-                    ballPositions.push(x, y);
-                    ballAmounts.push(amount);
-                    originalOrbitRadii.push(orbitRadius);
-                    initialAngles.push(orbitAngle);
-                    ballDaysOld.push(daysOld);
+                    // Set halo data for the fragment shader
+                    const radius = Math.min(ballCanvas.width, ballCanvas.height) / 3 * (0.5 + Math.random());
+                    const speedFactor = Math.max(0.1, (7 - daysOld) / 7);
+                    const size = Math.max(50.0, Math.min(400.0, (amount / 5000000) * 400));
 
+                    if (haloIndex < 100) {
+                        haloData[haloIndex * 3] = radius;
+                        haloData[haloIndex * 3 + 1] = speedFactor;
+                        haloData[haloIndex * 3 + 2] = size / 500.0; // Normalize size for shader
+                        haloIndex++;
+                    }
+
+                    ballAmounts.push(amount);
                 } catch (e) {
                     console.error("Error processing record: ", record, e);
                 }
             });
-            console.log('Ball Positions:', ballPositions); // Log ball positions to verify data
-            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(ballPositions), gl.STATIC_DRAW);
+            console.log('Loaded Halo Data:', haloData); // Log halo data to verify
         }
 
         function refreshData() {
@@ -277,7 +278,7 @@
                 })
                 .catch(error => console.error('Error fetching XLSX:', error));
 
-            // Set interval to refresh data every 60 minutes 
+            // Set interval to refresh data every 60 minutes
             setInterval(refreshData, 60 * 60 * 1000);
         };
     </script>
