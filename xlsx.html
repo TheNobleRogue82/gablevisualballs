@@ -114,7 +114,9 @@
                         console.warn('Skipping record due to missing date:', record);
                         return;
                     }
-                    const date = new Date(Date.parse(record['Orders[OrderDate]']));
+                    // Convert Excel serial date to JavaScript Date
+                    const excelDate = record['Orders[OrderDate]'];
+                    const date = new Date((excelDate - 25569) * 86400 * 1000); // 25569 is the offset to Unix epoch time
                     const daysOld = Math.floor((today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
                     if (daysOld > DATE_RANGE) {
                         console.log('Skipping record due to date range:', record);
@@ -172,7 +174,7 @@
         }
 
         function refreshData() {
-            fetch('https://gabledatavisual.blob.core.windows.net/data/pebbles.xlsx')
+            fetch('https://gabledatavisual.blob.core.windows.net/data/data.xlsx')
                 .then(response => {
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status}`);
@@ -192,7 +194,7 @@
         }
 
         window.onload = () => {
-            fetch('https://gabledatavisual.blob.core.windows.net/data/pebbles.xlsx')
+            fetch('https://gabledatavisual.blob.core.windows.net/data/data.xlsx')
                 .then(response => {
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status}`);
