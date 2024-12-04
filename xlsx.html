@@ -100,11 +100,19 @@
                     ctx.fill();
                     ctx.closePath();
 
-                    // Draw the glow effect with varying intensity
-                    ctx.shadowBlur = 20 * glowIntensity + 5; // Increase shadowBlur closer to the center
+                    // Draw the glow effect pointing towards the center "G"
+                    const angleToCenter = Math.atan2(centerY - this.y, centerX - this.x);
+                    const offsetX = Math.cos(angleToCenter) * this.radius;
+                    const offsetY = Math.sin(angleToCenter) * this.radius;
+
+                    ctx.shadowBlur = 30 * glowIntensity + 10; // Increase shadowBlur closer to the center
+                    ctx.shadowOffsetX = offsetX;
+                    ctx.shadowOffsetY = offsetY;
                     ctx.shadowColor = `rgba(100, 149, 237, ${0.7 * glowIntensity + 0.3})`; // Increase opacity closer to the center
                     ctx.fill();
                     ctx.shadowBlur = 0;
+                    ctx.shadowOffsetX = 0;
+                    ctx.shadowOffsetY = 0;
 
                     // Add an inner glow effect along the edge of the circle
                     const gradient = ctx.createRadialGradient(this.x, this.y, this.radius * 0.9, this.x, this.y, this.radius);
