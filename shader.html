@@ -55,15 +55,37 @@
             }
         `;
 
-        // Fragment shader source (simplified for testing visibility)
+        // Fragment shader source (updated to use halo data)
         const fragmentShaderSource = `
             precision mediump float;
             uniform vec2 u_resolution;
             uniform float u_time;
+            uniform int u_numHalos;
+            uniform vec3 u_haloData[100]; // max 100 halos: (radius, angle speed factor, size)
+
             void main() {
-                vec2 st = gl_FragCoord.xy / u_resolution;
-                vec3 color = vec3(st.x, st.y, abs(sin(u_time * 0.001)));
-                gl_FragColor = vec4(color, 1.0);
+                vec2 st = (gl_FragCoord.xy / u_resolution) * 2.0 - 1.0;
+                st.x *= u_resolution.x / u_resolution.y;
+
+                vec3 color = vec3(0.0);
+                float alpha = 0.0;
+
+                for (int i = 0; i < 100; i++) {
+                    if (i >= u_numHalos) break;
+                    float radius = u_haloData[i].x;
+                    float speedFactor = u_haloData[i].y;
+                    float size = u_haloData[i].z;
+
+                    float angle = u_time * speedFactor;
+                    vec2 haloPos = vec2(cos(angle), sin(angle)) * radius;
+
+                    float dist = length(st - haloPos);
+                    float intensity = smoothstep(size * 0.5, 0.0, dist);
+                    color += vec3(1.0, 0.7, 0.2) * intensity; // Brighter color for better visibility
+                    alpha += intensity;
+                }
+
+                gl_FragColor = vec4(color, min(alpha, 1.0));
             }
         `;
 
@@ -110,6 +132,11 @@
         const positionAttributeLocation = gl.getAttribLocation(program, "a_position");
         const resolutionUniformLocation = gl.getUniformLocation(program, "u_resolution");
         const timeUniformLocation = gl.getUniformLocation(program, "u_time");
+        const numHalosUniformLocation = gl.getUniformLocation(program, "u_numHalos");
+        const haloDataUniformLocation = gl.getUniformLocation(program, "u_haloData");
+
+        let ballAmounts = [];
+        let haloData = new Float32Array(300); // max 100 halos, each with (radius, speed factor, size)
 
         function resizeCanvasToDisplaySize(canvas) {
             const displayWidth = canvas.clientWidth;
@@ -137,6 +164,12 @@
             resizeCanvasToDisplaySize(ballCanvas);
             drawG(); // Draw the glowing 'G' in the center of the canvas
 
+            if (ballAmounts.length === 0) {
+                console.warn('No halos to render. Waiting for data...');
+                requestAnimationFrame(render);
+                return;
+            }
+
             gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
             gl.clearColor(0, 0, 0, 0);
@@ -149,9 +182,11 @@
             gl.vertexAttribPointer(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0);
 
             gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
-            gl.uniform1f(timeUniformLocation, time);
+            gl.uniform1f(timeUniformLocation, time * 0.001);
+            gl.uniform1i(numHalosUniformLocation, Math.min(ballAmounts.length, 100));
+            gl.uniform3fv(haloDataUniformLocation, haloData);
 
-            console.log('Rendering frame:', { resolution: [gl.canvas.width, gl.canvas.height], time });
+            console.log('Rendering frame:', { resolution: [gl.canvas.width, gl.canvas.height], time, haloData });
 
             gl.drawArrays(gl.TRIANGLES, 0, 6);
 
@@ -163,8 +198,98 @@
             requestAnimationFrame(render);
         }
 
+        function loadBallsFromData(data) {
+            ballAmounts = [];
+            const today = new Date();
+            let haloIndex = 0;
+            data.forEach(record => {
+                try {
+                    // Parse the date field safely
+                    if (!record['OpenOrder[OrderDate]']) {
+                        console.warn('Skipping record due to missing date:', record);
+                        return;
+                    }
+                    // Convert Excel serial date to JavaScript Date
+                    const excelDate = record['OpenOrder[OrderDate]'];
+                    const date = new Date((excelDate - 25569) * 86400 * 1000); // 25569 is the offset to Unix epoch time
+                    const daysOld = Math.floor((today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+                    if (daysOld > 7) {  // Only include records from the last 7 days
+                        console.log('Skipping record due to date range:', record);
+                        return;
+                    }
+
+                    // Parse the amount safely
+                    const amountField = record['[SumOrderTotal]'];
+                    if (typeof amountField !== 'number') {
+                        console.warn('Skipping record due to invalid amount type:', record);
+                        return;
+                    }
+                    const amount = amountField;
+                    if (isNaN(amount) || amount < 1000) {
+                        console.warn('Skipping record due to invalid or insufficient amount:', record);
+                        return;
+                    }
+
+                    // Set halo data for the fragment shader
+                    const radius = Math.min(ballCanvas.width, ballCanvas.height) / 3 * (0.5 + Math.random());
+                    const speedFactor = Math.max(0.1, (7 - daysOld) / 7);
+                    const size = Math.max(50.0, Math.min(400.0, (amount / 5000000) * 400));
+
+                    if (haloIndex < 100) {
+                        haloData[haloIndex * 3] = radius;
+                        haloData[haloIndex * 3 + 1] = speedFactor;
+                        haloData[haloIndex * 3 + 2] = size / 500.0; // Normalize size for shader
+                        haloIndex++;
+                    }
+
+                    ballAmounts.push(amount);
+                } catch (e) {
+                    console.error("Error processing record: ", record, e);
+                }
+            });
+            console.log('Loaded Halo Data:', haloData); // Log halo data to verify
+        }
+
+        function refreshData() {
+            fetch('https://gabledatavisual.blob.core.windows.net/data/pebbles.xlsx')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.arrayBuffer();
+                })
+                .then(data => {
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                    console.log('Parsed XLSX Data:', jsonData);
+                    loadBallsFromData(jsonData);
+                })
+                .catch(error => console.error('Error fetching XLSX:', error));
+        }
+
         window.onload = () => {
-            requestAnimationFrame(render);
+            fetch('https://gabledatavisual.blob.core.windows.net/data/pebbles.xlsx')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.arrayBuffer();
+                })
+                .then(data => {
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                    console.log('Parsed XLSX Data:', jsonData);
+                    loadBallsFromData(jsonData);
+                    requestAnimationFrame(render);
+                })
+                .catch(error => console.error('Error fetching XLSX:', error));
+
+            // Set interval to refresh data every 60 minutes
+            setInterval(refreshData, 60 * 60 * 1000);
         };
     </script>
 </body>
