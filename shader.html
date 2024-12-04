@@ -12,26 +12,35 @@
         body {
             margin: 0;
             overflow: hidden;
+            position: relative;
         }
         canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
             display: block;
             background: black;
         }
     </style>
 </head>
 <body>
+    <canvas id="gCanvas"></canvas>
     <canvas id="ballCanvas"></canvas>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script>
-        const canvas = document.getElementById('ballCanvas');
-        const gl = canvas.getContext('webgl');
-        const ctx2d = canvas.getContext('2d'); // 2D context to draw the 'G'
-        canvas.width = window.innerWidth || document.documentElement.clientWidth;
-        canvas.height = window.innerHeight || document.documentElement.clientHeight;
+        const gCanvas = document.getElementById('gCanvas');
+        const ballCanvas = document.getElementById('ballCanvas');
+        const ctx2d = gCanvas.getContext('2d'); // 2D context to draw the 'G'
+        const gl = ballCanvas.getContext('webgl');
+
+        gCanvas.width = window.innerWidth || document.documentElement.clientWidth;
+        gCanvas.height = window.innerHeight || document.documentElement.clientHeight;
+        ballCanvas.width = window.innerWidth || document.documentElement.clientWidth;
+        ballCanvas.height = window.innerHeight || document.documentElement.clientHeight;
 
         if (!gl) {
             console.error('WebGL not supported, falling back on experimental-webgl');
-            gl = canvas.getContext('experimental-webgl');
+            gl = ballCanvas.getContext('experimental-webgl');
         }
 
         if (!gl) {
@@ -115,16 +124,16 @@
         }
 
         function drawG() {
-            ctx2d.clearRect(0, 0, canvas.width, canvas.height);
+            ctx2d.clearRect(0, 0, gCanvas.width, gCanvas.height);
             ctx2d.font = "bold 200px 'FutoSansHeavy', Arial, sans-serif";
             ctx2d.fillStyle = "rgba(255, 255, 255, 0.5)";
             ctx2d.textAlign = "center";
             ctx2d.textBaseline = "middle";
-            ctx2d.fillText("G", canvas.width / 2, canvas.height / 2);
+            ctx2d.fillText("G", gCanvas.width / 2, gCanvas.height / 2);
         }
 
         function render(time) {
-            resizeCanvasToDisplaySize(gl.canvas);
+            resizeCanvasToDisplaySize(ballCanvas);
             drawG(); // Draw the 'G' in the center of the canvas
 
             gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
@@ -193,9 +202,9 @@
 
                     // Calculate position based on the data
                     const orbitAngle = Math.random() * 2 * Math.PI;
-                    const orbitRadius = Math.min(canvas.width, canvas.height) / 3 * (0.5 + Math.random());
-                    const x = canvas.width / 2 + orbitRadius * Math.cos(orbitAngle);
-                    const y = canvas.height / 2 + orbitRadius * Math.sin(orbitAngle);
+                    const orbitRadius = Math.min(ballCanvas.width, ballCanvas.height) / 3 * (0.5 + Math.random());
+                    const x = ballCanvas.width / 2 + orbitRadius * Math.cos(orbitAngle);
+                    const y = ballCanvas.height / 2 + orbitRadius * Math.sin(orbitAngle);
                     ballPositions.push(x, y);
                     ballAmounts.push(amount);
 
