@@ -55,7 +55,7 @@
             }
         `;
 
-        // Fragment shader source (simplified for testing static halos)
+        // Fragment shader source (updated for dynamic halo rendering)
         const fragmentShaderSource = `
             precision mediump float;
             uniform vec2 u_resolution;
@@ -70,17 +70,17 @@
                 vec3 color = vec3(0.0);
                 float alpha = 0.0;
 
-                for (int i = 0; i < 3; i++) { // Debugging with only 3 static halos
-                    float radius = 0.5;
-                    float speedFactor = 0.2 + float(i) * 0.1;
-                    float size = 0.1;
+                for (int i = 0; i < u_numHalos; i++) {
+                    float radius = u_haloData[i].x;
+                    float speedFactor = u_haloData[i].y;
+                    float size = u_haloData[i].z;
 
                     float angle = u_time * speedFactor;
                     vec2 haloPos = vec2(cos(angle + float(i)), sin(angle + float(i))) * radius;
 
                     float dist = length(st - haloPos);
                     float intensity = smoothstep(size * 0.5, 0.0, dist);
-                    color += vec3(1.0, 0.0, 0.0) * intensity; // Red color for better visibility
+                    color += vec3(1.0, 0.5, float(i) / float(u_numHalos)) * intensity; // Color differentiation for visibility
                     alpha += intensity;
                 }
 
