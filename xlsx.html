@@ -104,7 +104,7 @@
                     // Draw the halo glow effect around the ball
                     ctx.shadowBlur = 30 * glowIntensity + 20; // Increase shadowBlur closer to the center
                     ctx.shadowColor = `rgba(100, 149, 237, ${0.5 * glowIntensity + 0.2})`; // Adjust opacity based on distance from center
-                    ctx.fillStyle = 'rgba(100, 149, 237, 0.2)';
+                    ctx.fillStyle = 'rgba(100, 149, 237, 0.8)';
                     ctx.beginPath();
                     ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
                     ctx.fill();
