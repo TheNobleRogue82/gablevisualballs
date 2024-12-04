@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tremble's Pebbles</title>
     <style>
-        
         @font-face {
             font-family: 'FutoSansHeavy';
             src: url('https://gabledatavisual.blob.core.windows.net/data/futo-sans-heavy.ttf') format('truetype');
@@ -22,206 +21,202 @@
 </head>
 <body>
     <canvas id="ballCanvas"></canvas>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script>
         const canvas = document.getElementById('ballCanvas');
-        const ctx = canvas.getContext('2d');
+        const gl = canvas.getContext('webgl');
         canvas.width = window.innerWidth || document.documentElement.clientWidth;
         canvas.height = window.innerHeight || document.documentElement.clientHeight;
 
-        const MAX_DIAMETER = 4000;
-        const MIN_DIAMETER = 10;
-        const MAX_AMOUNT = 5000000;
-        const MIN_AMOUNT = 1000;
-        const DATE_RANGE = 30;
-        const SPEED_FACTORS = [10, 9, 7, 5.5, 4, 2.5, 1, 0.5];
-        const balls = [];
-
-        const centerX = canvas.width / 2;
-        const centerY = canvas.height / 2;
-        const orbitRadius = Math.min(canvas.width, canvas.height) / 3;
-
-        // Function to draw a starry background
-        const stars = [];
-        function initializeStars() {
-            const numStars = 200;
-            for (let i = 0; i < numStars; i++) {
-                const x = Math.random() * canvas.width;
-                const y = Math.random() * canvas.height;
-                const radius = Math.random() * 1.5;
-                stars.push({ x, y, radius });
-            }
+        if (!gl) {
+            console.error('WebGL not supported, falling back on experimental-webgl');
+            gl = canvas.getContext('experimental-webgl');
         }
 
-        function drawStars() {
-            ctx.fillStyle = 'white';
-            stars.forEach(star => {
-                ctx.beginPath();
-                ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.closePath();
-            });
+        if (!gl) {
+            alert('Your browser does not support WebGL');
         }
 
-        initializeStars(); // Draw stars once during initialization // Reset alpha
-
-        class Ball {
-            constructor(diameter, speedFactor, orbitAngle) {
-                this.diameter = diameter;
-                this.radius = diameter / 2;
-                this.orbitAngle = orbitAngle;
-                this.orbitRadius = orbitRadius * (0.5 + Math.random()); // Randomize distance from the center for more variation
-                this.orbitSpeed = speedFactor * 0.001; // Adjust speed factor to control orbit speed
-                this.brightness = 50; // Initial brightness
+        // Vertex shader source
+        const vertexShaderSource = `
+            attribute vec2 a_position;
+            uniform vec2 u_resolution;
+            void main() {
+                vec2 zeroToOne = a_position / u_resolution;
+                vec2 zeroToTwo = zeroToOne * 2.0;
+                vec2 clipSpace = zeroToTwo - 1.0;
+                gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
             }
+        `;
 
-            update() {
-                // Update orbit angle
-                this.orbitAngle += this.orbitSpeed;
-                if (this.orbitAngle >= 2 * Math.PI) {
-                    this.orbitAngle -= 2 * Math.PI;
-                }
-
-                // Calculate new position based on orbit
-                this.x = centerX + this.orbitRadius * Math.cos(this.orbitAngle);
-                this.y = centerY + this.orbitRadius * Math.sin(this.orbitAngle);
+        // Fragment shader source (creates glow effect)
+        const fragmentShaderSource = `
+            precision mediump float;
+            uniform float u_time;
+            uniform vec2 u_resolution;
+            void main() {
+                vec2 st = gl_FragCoord.xy / u_resolution;
+                float dist = distance(st, vec2(0.5));
+                float glow = 0.1 / dist;
+                vec3 color = vec3(0.1, 0.2, 0.8) * glow;
+                gl_FragColor = vec4(color, 1.0);
             }
+        `;
 
-            draw() {
-                // Ensure valid values for gradient to avoid non-finite errors
-                if (isFinite(this.x) && isFinite(this.y) && isFinite(this.radius)) {
-                    ctx.fillStyle = 'black';
-                    ctx.beginPath();
-                    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.closePath();
-
-                    // Draw the glow effect
-                    ctx.shadowBlur = 15;
-                    ctx.shadowColor = `rgba(100, 149, 237, 3)`; // Bright blueish-white glow
-                    ctx.fill();
-                    ctx.shadowBlur = 0;
-                }
+        function createShader(gl, type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            const success = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
+            if (success) {
+                return shader;
             }
+            console.error(gl.getShaderInfoLog(shader));
+            gl.deleteShader(shader);
+        }
+
+        function createProgram(gl, vertexShader, fragmentShader) {
+            const program = gl.createProgram();
+            gl.attachShader(program, vertexShader);
+            gl.attachShader(program, fragmentShader);
+            gl.linkProgram(program);
+            const success = gl.getProgramParameter(program, gl.LINK_STATUS);
+            if (success) {
+                return program;
+            }
+            console.error(gl.getProgramInfoLog(program));
+            gl.deleteProgram(program);
+        }
+
+        const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
+        const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
+        const program = createProgram(gl, vertexShader, fragmentShader);
+
+        const positionAttributeLocation = gl.getAttribLocation(program, "a_position");
+        const resolutionUniformLocation = gl.getUniformLocation(program, "u_resolution");
+        const timeUniformLocation = gl.getUniformLocation(program, "u_time");
+
+        const positionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+
+        function resizeCanvasToDisplaySize(canvas) {
+            const displayWidth = canvas.clientWidth;
+            const displayHeight = canvas.clientHeight;
+            if (canvas.width !== displayWidth || canvas.height !== displayHeight) {
+                canvas.width = displayWidth;
+                canvas.height = displayHeight;
+                return true;
+            }
+            return false;
+        }
+
+        function render(time) {
+            resizeCanvasToDisplaySize(gl.canvas);
+            gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+
+            gl.clearColor(0, 0, 0, 0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+
+            gl.useProgram(program);
+
+            gl.enableVertexAttribArray(positionAttributeLocation);
+            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+            gl.vertexAttribPointer(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0);
+
+            gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
+            gl.uniform1f(timeUniformLocation, time * 0.001);
+
+            gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+            requestAnimationFrame(render);
         }
 
         function loadBallsFromData(data) {
+            const positions = [];
             const today = new Date();
             data.forEach(record => {
                 try {
                     // Parse the date field safely
-                    if (!record.Date) {
+                    if (!record['OpenOrder[OrderDate]']) {
                         console.warn('Skipping record due to missing date:', record);
                         return;
                     }
-                    const date = new Date(Date.parse(record.Date));
+                    // Convert Excel serial date to JavaScript Date
+                    const excelDate = record['OpenOrder[OrderDate]'];
+                    const date = new Date((excelDate - 25569) * 86400 * 1000); // 25569 is the offset to Unix epoch time
                     const daysOld = Math.floor((today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-                    if (daysOld > DATE_RANGE) {
+                    if (daysOld > 30) {
                         console.log('Skipping record due to date range:', record);
                         return;
                     }
 
                     // Parse the amount safely
-                    const amountField = record[" Amount "] || record.Amount || record.amount; // Handle different possible field names
-                    if (!amountField) {
-                        console.warn('Skipping record due to missing amount:', record);
+                    const amountField = record['[SumOrderTotal]'];
+                    if (typeof amountField !== 'number') {
+                        console.warn('Skipping record due to invalid amount type:', record);
                         return;
                     }
-                    const amount = parseFloat(amountField.replace(/[$,]/g, ''));
+                    const amount = amountField;
                     if (isNaN(amount) || amount < 1000) {
                         console.warn('Skipping record due to invalid or insufficient amount:', record);
                         return;
                     }
 
-                    const diameter = Math.max(MIN_DIAMETER, Math.min(MAX_DIAMETER,
-                        ((amount - MIN_AMOUNT) / (MAX_AMOUNT - MIN_AMOUNT)) * (MAX_DIAMETER - MIN_DIAMETER) + MIN_DIAMETER));
-                    const speedFactor = SPEED_FACTORS[Math.min(daysOld, DATE_RANGE)];
+                    // Calculate position based on the data
+                    const diameter = Math.max(10, Math.min(4000, ((amount - 1000) / (5000000 - 1000)) * (4000 - 10) + 10));
                     const orbitAngle = Math.random() * 2 * Math.PI;
-                    const brightness = 100 - (daysOld * (100 / DATE_RANGE)); // Calculate brightness based on days old
-
-                    const ball = new Ball(diameter, speedFactor, orbitAngle);
-                    ball.brightness = brightness;
-                    balls.push(ball);
+                    const orbitRadius = Math.min(canvas.width, canvas.height) / 3 * (0.5 + Math.random());
+                    const x = centerX + orbitRadius * Math.cos(orbitAngle);
+                    const y = centerY + orbitRadius * Math.sin(orbitAngle);
+                    positions.push(x, y);
 
                 } catch (e) {
                     console.error("Error processing record: ", record, e);
                 }
             });
-        }
-
-        function animate() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            drawStars(); // Draw the static starry background
-
-            // Draw the central "G" character
-            ctx.font = "bold 100px FutoSansHeavy, Arial, sans-serif";
-            ctx.fillStyle = "black";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.shadowBlur = 20; // Reduce shadowBlur for the 'G' to create a more defined glow
-            ctx.shadowColor = "rgba(100, 149, 237, 2.5)"; // Bright blueish-white glow for 'G'
-            ctx.fillText("G", centerX, centerY);
-            ctx.shadowBlur = 0; // Reset shadowBlur after drawing
-
-            // Draw and update all balls
-            balls.forEach(ball => {
-                ball.update();
-                ball.draw();
-            });
-            requestAnimationFrame(animate);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
         }
 
         function refreshData() {
-            fetch('https://gabledatavisual.blob.core.windows.net/data/data.csv')
+            fetch('https://gabledatavisual.blob.core.windows.net/data/pebbles.xlsx')
                 .then(response => {
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status}`);
                     }
-                    return response.text();
+                    return response.arrayBuffer();
                 })
-                .then(csvText => {
-                    Papa.parse(csvText, {
-                        header: true,
-                        skipEmptyLines: true,
-                        complete: (results) => {
-                            console.log('Parsed CSV Data:', results.data);
-                            balls.length = 0; // Clear existing balls array
-                            loadBallsFromData(results.data); // Load new data without resetting positions
-                        },
-                        error: (error) => {
-                            console.error('Error parsing CSV:', error);
-                        }
-                    });
+                .then(data => {
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                    console.log('Parsed XLSX Data:', jsonData);
+                    loadBallsFromData(jsonData);
                 })
-                .catch(error => console.error('Error fetching CSV:', error));
+                .catch(error => console.error('Error fetching XLSX:', error));
         }
 
         window.onload = () => {
-            fetch('https://gabledatavisual.blob.core.windows.net/data/data.csv')
+            fetch('https://gabledatavisual.blob.core.windows.net/data/pebbles.xlsx')
                 .then(response => {
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status}`);
                     }
-                    return response.text();
+                    return response.arrayBuffer();
                 })
-                .then(csvText => {
-                    Papa.parse(csvText, {
-                        header: true,
-                        skipEmptyLines: true,
-                        complete: (results) => {
-                            console.log('Parsed CSV Data:', results.data);
-                            loadBallsFromData(results.data);
-                            animate();  // Start the animation directly
-                        },
-                        error: (error) => {
-                            console.error('Error parsing CSV:', error);
-                        }
-                    });
+                .then(data => {
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                    console.log('Parsed XLSX Data:', jsonData);
+                    loadBallsFromData(jsonData);
+                    requestAnimationFrame(render);
                 })
-                .catch(error => console.error('Error fetching CSV:', error));
+                .catch(error => console.error('Error fetching XLSX:', error));
 
-            // Set interval to refresh data every 3 minutes without resetting positions
-            setInterval(refreshData, 3 * 60 * 1000);
+            // Set interval to refresh data every 60 minutes 
+            setInterval(refreshData, 60 * 60 * 1000);
         };
     </script>
 </body>
