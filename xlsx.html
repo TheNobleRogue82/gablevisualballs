@@ -94,6 +94,7 @@
 
                 // Ensure valid values for gradient to avoid non-finite errors
                 if (isFinite(this.x) && isFinite(this.y) && isFinite(this.radius)) {
+                    // Draw the ball
                     ctx.fillStyle = 'black';
                     ctx.beginPath();
                     ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
@@ -101,9 +102,9 @@
                     ctx.closePath();
 
                     // Draw the halo glow effect around the ball
-                    ctx.shadowBlur = 20 * glowIntensity + 10; // Increase shadowBlur closer to the center
-                    ctx.shadowColor = `rgba(100, 149, 237, ${0.7 * glowIntensity + 0.3})`; // Increase opacity closer to the center
-                    ctx.fillStyle = 'rgba(0, 0, 0, 0)';
+                    ctx.shadowBlur = 30 * glowIntensity + 20; // Increase shadowBlur closer to the center
+                    ctx.shadowColor = `rgba(100, 149, 237, ${0.5 * glowIntensity + 0.2})`; // Adjust opacity based on distance from center
+                    ctx.fillStyle = 'rgba(100, 149, 237, 0.2)';
                     ctx.beginPath();
                     ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
                     ctx.fill();
@@ -111,9 +112,9 @@
                     ctx.shadowBlur = 0;
 
                     // Add an inner glow effect along the edge of the circle
-                    const gradient = ctx.createRadialGradient(this.x, this.y, this.radius * 0.9, this.x, this.y, this.radius);
-                    gradient.addColorStop(0, 'rgba(255, 255, 255, 0)');
-                    gradient.addColorStop(1, `rgba(100, 149, 237, ${0.5 * glowIntensity + 0.2})`); // Increase the intensity of the edge glow as well
+                    const gradient = ctx.createRadialGradient(this.x, this.y, this.radius * 0.5, this.x, this.y, this.radius);
+                    gradient.addColorStop(0, `rgba(255, 255, 255, ${0.1 * glowIntensity})`);
+                    gradient.addColorStop(1, `rgba(100, 149, 237, ${0.4 * glowIntensity})`);
                     ctx.fillStyle = gradient;
                     ctx.beginPath();
                     ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
