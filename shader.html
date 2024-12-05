@@ -31,7 +31,7 @@
         const gCanvas = document.getElementById('gCanvas');
         const ballCanvas = document.getElementById('ballCanvas');
         const ctx2d = gCanvas.getContext('2d');
-        const gl = ballCanvas.getContext('webgl');
+        let gl = ballCanvas.getContext('webgl');
 
         gCanvas.width = window.innerWidth || document.documentElement.clientWidth;
         gCanvas.height = window.innerHeight || document.documentElement.clientHeight;
@@ -72,7 +72,7 @@
                 // Render multiple halos based on ball data
                 for (int i = 0; i < 100; i++) {
                     float radius = 0.5 + (u_ballData[i * 3] / 5000.0) * 0.5;
-                    float speedFactor = u_ballData[i * 3 + 1] * 0.0005; // Further reduced speed factor for smoother orbit and less shaking
+                    float speedFactor = u_ballData[i * 3 + 1] * 0.0001; // Further reduced speed factor for smoother orbit and less shaking
                     float size = 0.1 + (u_ballData[i * 3 + 2] / 1000.0) * 0.2;
 
                     float angle = u_time * speedFactor + float(i) * 0.1; // Add small offset per halo to avoid synchronization
@@ -185,7 +185,7 @@
             const ballData = new Float32Array(300);
             for (let i = 0; i < ballAmounts.length && i < 100; i++) {
                 ballData[i * 3] = ballAmounts[i]; // Size factor
-                ballData[i * 3 + 1] = 0.0005 + Math.random() * 0.002; // Reduced speed factor for smoother orbit
+                ballData[i * 3 + 1] = 0.0001 + Math.random() * 0.001; // Reduced speed factor for smoother orbit
                 ballData[i * 3 + 2] = ballAmounts[i]; // Size again for simplicity
             }
 
