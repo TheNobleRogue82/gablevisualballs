@@ -8,7 +8,7 @@
 </head>
 <body style="margin: 0; overflow: hidden;">
     <script>
-        let scene, camera, renderer, material, planes = [];
+        let scene, camera, renderer, planes = [];
 
         init();
         animate();
@@ -97,8 +97,9 @@
             `;
 
             // Create multiple planes for different halos
-            for (let i = 0; i < 3; i++) {
-                let geometry = new THREE.PlaneBufferGeometry(2 + i, 2 + i);
+            const haloSizes = [1.5, 2.0, 2.5];
+            for (let i = 0; i < haloSizes.length; i++) {
+                let geometry = new THREE.PlaneBufferGeometry(haloSizes[i], haloSizes[i]);
                 let material = new THREE.ShaderMaterial({
                     uniforms: {
                         iTime: { value: 0 },
@@ -109,7 +110,7 @@
                 });
 
                 let plane = new THREE.Mesh(geometry, material);
-                plane.position.z = -i * 0.1; // Slightly offset each plane in the z-axis
+                plane.position.z = -i * 0.5; // Offset each plane further along the z-axis for better visibility
                 scene.add(plane);
                 planes.push({ mesh: plane, material: material });
             }
