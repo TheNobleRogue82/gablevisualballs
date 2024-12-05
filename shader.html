@@ -72,14 +72,14 @@
                 // Render multiple halos based on ball data
                 for (int i = 0; i < 100; i++) {
                     float radius = 0.3 + (u_ballData[i * 3] / 1000.0) * 0.7;
-                    float speedFactor = u_ballData[i * 3 + 1];
+                    float speedFactor = u_ballData[i * 3 + 1] * 0.05; // Slowed down the speed factor
                     float size = 0.05 + (u_ballData[i * 3 + 2] / 1000.0) * 0.15;
 
                     float angle = u_time * speedFactor;
                     vec2 haloPos = vec2(cos(angle + float(i)), sin(angle + float(i))) * radius;
 
                     float dist = length(st - haloPos);
-                    float intensity = smoothstep(size, 0.0, dist);
+                    float intensity = exp(-pow(dist / size, 2.0)); // Improved glow effect using exponential falloff
                     color += vec3(0.5, 0.8, 1.0) * intensity;
                     alpha += intensity;
                 }
@@ -185,7 +185,7 @@
             const ballData = new Float32Array(300);
             for (let i = 0; i < ballAmounts.length && i < 100; i++) {
                 ballData[i * 3] = ballAmounts[i]; // Size factor
-                ballData[i * 3 + 1] = 0.5 + Math.random() * 1.5; // Speed factor
+                ballData[i * 3 + 1] = 0.1 + Math.random() * 0.2; // Reduced speed factor for slower orbit
                 ballData[i * 3 + 2] = ballAmounts[i]; // Size again for simplicity
             }
 
