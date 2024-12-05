@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebGL Shader Ring</title>
+    <title>WebGL Shader Multiple Halos</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body style="margin: 0; overflow: hidden;">
     <script>
-        let scene, camera, renderer, material, plane;
+        let scene, camera, renderer, material, planes = [];
 
         init();
         animate();
@@ -23,8 +23,7 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
             document.body.appendChild(renderer.domElement);
 
-            // Set up the geometry and material
-            const geometry = new THREE.PlaneBufferGeometry(2, 2);
+            // Set up multiple halos with different sizes
             const fragmentShader = `
                 uniform float iTime;
                 uniform vec2 iResolution;
@@ -96,17 +95,24 @@
                     mainImage(gl_FragColor, gl_FragCoord.xy);
                 }
             `;
-            
-            material = new THREE.ShaderMaterial({
-                uniforms: {
-                    iTime: { value: 0 },
-                    iResolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) }
-                },
-                fragmentShader: fragmentShader
-            });
 
-            plane = new THREE.Mesh(geometry, material);
-            scene.add(plane);
+            // Create multiple planes for different halos
+            for (let i = 0; i < 3; i++) {
+                let geometry = new THREE.PlaneBufferGeometry(2 + i, 2 + i);
+                let material = new THREE.ShaderMaterial({
+                    uniforms: {
+                        iTime: { value: 0 },
+                        iResolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) }
+                    },
+                    fragmentShader: fragmentShader,
+                    transparent: true
+                });
+
+                let plane = new THREE.Mesh(geometry, material);
+                plane.position.z = -i * 0.1; // Slightly offset each plane in the z-axis
+                scene.add(plane);
+                planes.push({ mesh: plane, material: material });
+            }
 
             // Handle window resize
             window.addEventListener('resize', onWindowResize, false);
@@ -114,12 +120,16 @@
 
         function onWindowResize() {
             renderer.setSize(window.innerWidth, window.innerHeight);
-            material.uniforms.iResolution.value.set(window.innerWidth, window.innerHeight);
+            planes.forEach(planeObj => {
+                planeObj.material.uniforms.iResolution.value.set(window.innerWidth, window.innerHeight);
+            });
         }
 
         function animate() {
             requestAnimationFrame(animate);
-            material.uniforms.iTime.value += 0.01;
+            planes.forEach(planeObj => {
+                planeObj.material.uniforms.iTime.value += 0.01;
+            });
             renderer.render(scene, camera);
         }
     </script>
