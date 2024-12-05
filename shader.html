@@ -8,7 +8,7 @@
 </head>
 <body style="margin: 0; overflow: hidden;">
     <script>
-        let scene, camera, renderer, material, plane;
+        let scene, camera, renderer, material, plane, balls = [];
 
         init();
         animate();
@@ -108,6 +108,32 @@
             plane = new THREE.Mesh(geometry, material);
             scene.add(plane);
 
+            // Add bouncing balls
+            const ballGeometry = new THREE.SphereGeometry(1, 32, 32);
+            const ballMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff });
+            const numBalls = 10;
+            for (let i = 0; i < numBalls; i++) {
+                let ball = new THREE.Mesh(ballGeometry, ballMaterial);
+                ball.position.set(
+                    (Math.random() - 0.5) * 4,
+                    (Math.random() - 0.5) * 4,
+                    (Math.random() - 0.5) * 4
+                );
+                ball.scale.setScalar(Math.random() * 2);
+                ball.userData.velocity = new THREE.Vector3(
+                    (Math.random() - 0.5) * 0.02,
+                    (Math.random() - 0.5) * 0.02,
+                    (Math.random() - 0.5) * 0.02
+                );
+                scene.add(ball);
+                balls.push(ball);
+            }
+
+            // Add light
+            const light = new THREE.PointLight(0xffffff, 1);
+            light.position.set(0, 0, 5);
+            scene.add(light);
+
             // Handle window resize
             window.addEventListener('resize', onWindowResize, false);
         }
@@ -120,6 +146,17 @@
         function animate() {
             requestAnimationFrame(animate);
             material.uniforms.iTime.value += 0.01;
+
+            // Update ball positions
+            balls.forEach(ball => {
+                ball.position.add(ball.userData.velocity);
+
+                // Check for collisions with bounds and reverse velocity if necessary
+                if (Math.abs(ball.position.x) > 2) ball.userData.velocity.x *= -1;
+                if (Math.abs(ball.position.y) > 2) ball.userData.velocity.y *= -1;
+                if (Math.abs(ball.position.z) > 2) ball.userData.velocity.z *= -1;
+            });
+
             renderer.render(scene, camera);
         }
     </script>
