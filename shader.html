@@ -55,11 +55,12 @@
             }
         `;
 
-        // Fragment shader source (simplified to render a single halo for debugging)
+        // Fragment shader source (updated to render multiple halos based on data)
         const fragmentShaderSource = `
             precision mediump float;
             uniform vec2 u_resolution;
             uniform float u_time;
+            uniform float u_ballData[300];
 
             void main() {
                 vec2 st = (gl_FragCoord.xy / u_resolution) * 2.0 - 1.0;
@@ -68,23 +69,19 @@
                 vec3 color = vec3(0.0);
                 float alpha = 0.0;
 
-                // Hardcoded single halo for debugging
-                float radius = 0.5;
-                float speedFactor = 1.0;
-                float size = 0.1;
+                // Render multiple halos based on ball data
+                for (int i = 0; i < 100; i++) {
+                    float radius = 0.3 + (u_ballData[i * 3] / 1000.0) * 0.7;
+                    float speedFactor = u_ballData[i * 3 + 1];
+                    float size = 0.05 + (u_ballData[i * 3 + 2] / 1000.0) * 0.15;
 
-                float angle = u_time * speedFactor;
-                vec2 haloPos = vec2(cos(angle), sin(angle)) * radius;
+                    float angle = u_time * speedFactor;
+                    vec2 haloPos = vec2(cos(angle + float(i)), sin(angle + float(i))) * radius;
 
-                float dist = length(st - haloPos);
-                float intensity = smoothstep(size, 0.0, dist);
-                color += vec3(0.5, 0.8, 1.0) * intensity;
-                alpha += intensity;
-
-                // Fallback to a bright red color if no halos are visible
-                if (alpha == 0.0) {
-                    color = vec3(1.0, 0.0, 0.0);
-                    alpha = 1.0;
+                    float dist = length(st - haloPos);
+                    float intensity = smoothstep(size, 0.0, dist);
+                    color += vec3(0.5, 0.8, 1.0) * intensity;
+                    alpha += intensity;
                 }
 
                 gl_FragColor = vec4(color, min(alpha, 1.0));
@@ -134,6 +131,7 @@
         const positionAttributeLocation = gl.getAttribLocation(program, "a_position");
         const resolutionUniformLocation = gl.getUniformLocation(program, "u_resolution");
         const timeUniformLocation = gl.getUniformLocation(program, "u_time");
+        const ballDataUniformLocation = gl.getUniformLocation(program, "u_ballData");
 
         let ballAmounts = [];
 
@@ -182,6 +180,16 @@
 
             gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
             gl.uniform1f(timeUniformLocation, time * 0.001);
+
+            // Prepare ball data for shader
+            const ballData = new Float32Array(300);
+            for (let i = 0; i < ballAmounts.length && i < 100; i++) {
+                ballData[i * 3] = ballAmounts[i]; // Size factor
+                ballData[i * 3 + 1] = 0.5 + Math.random() * 1.5; // Speed factor
+                ballData[i * 3 + 2] = ballAmounts[i]; // Size again for simplicity
+            }
+
+            gl.uniform1fv(ballDataUniformLocation, ballData);
 
             console.log('Rendering frame:', { resolution: [gl.canvas.width, gl.canvas.height], time });
 
