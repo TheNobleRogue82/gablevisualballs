@@ -272,6 +272,21 @@
         ctx.closePath();
       });
       
+      // Draw revolving text.
+      // The text will orbit around the center, fading in as formation mode blends in.
+      const textOrbitRadius = formationRingRadius + 80; // adjust offset as needed
+      ctx.save();
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate(formationRotation);
+      ctx.globalAlpha = blend; // fade text in and out with formation blend
+      ctx.font = "bold 24px FutoSansHeavy, Arial, sans-serif";
+      ctx.fillStyle = "white";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("New Sales Orders - 7 Days", textOrbitRadius, 0);
+      ctx.restore();
+      ctx.globalAlpha = 1.0;
+      
       requestAnimationFrame(animateBalls);
     }
     
