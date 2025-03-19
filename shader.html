@@ -148,10 +148,10 @@
 
     const balls = [];
     let targetPositions = []; // Array to hold positions from the text "G"
-    // Orbit radius is set relative to canvas size
-    const orbitRadius = Math.min(canvas.width, canvas.height) / 2;
+    // Reduce orbit radius so balls orbit closer to the center
+    const orbitRadius = Math.min(canvas.width, canvas.height) / 3;
 
-    // Helper: Generate a random color that will remain fixed per ball.
+    // Helper: Generate a random color that remains fixed for each ball.
     function randomColor() {
       const r = Math.floor(Math.random() * 256);
       const g = Math.floor(Math.random() * 256);
@@ -159,17 +159,17 @@
       return `rgb(${r},${g},${b})`;
     }
 
-    // The Ball class – now stores its orbit (current) position and will later get a target position.
+    // Ball class – now stores its orbit (current) position and later gets a target position.
     class Ball {
       constructor(diameter, speedFactor, orbitAngle) {
         this.diameter = diameter;
         this.radius = diameter / 2;
         this.orbitAngle = orbitAngle;
-        // Orbit radius: random factor between 80% and 120%
+        // Orbit radius: random factor between 80% and 120% of the new, smaller orbitRadius
         this.orbitRadius = orbitRadius * (0.8 + Math.random() * 0.4);
         this.orbitSpeed = speedFactor * 0.001;
         this.color = randomColor();
-        // These will be computed each update:
+        // Current positions (to be updated)
         this.x = 0;
         this.y = 0;
         // Target positions for the "G" (assigned later)
@@ -190,15 +190,15 @@
 
     // Compute target positions by drawing a “G” offscreen.
     function computeTargetPositions() {
+      // Use a larger offscreen canvas and font size for a thicker, more detailed G.
       const offCanvas = document.createElement('canvas');
-      // Size of offscreen canvas can be adjusted as needed.
-      offCanvas.width = 200;
-      offCanvas.height = 200;
+      offCanvas.width = 300;
+      offCanvas.height = 300;
       const offCtx = offCanvas.getContext('2d');
-      // Fill background to ensure transparency detection works.
       offCtx.fillStyle = "black";
       offCtx.fillRect(0, 0, offCanvas.width, offCanvas.height);
-      offCtx.font = "bold 100px FutoSansHeavy, Arial, sans-serif";
+      // Increase font size to capture more of the G’s detail.
+      offCtx.font = "bold 180px FutoSansHeavy, Arial, sans-serif";
       offCtx.textAlign = "center";
       offCtx.textBaseline = "middle";
       offCtx.fillStyle = "white";
@@ -206,7 +206,7 @@
 
       const imageData = offCtx.getImageData(0, 0, offCanvas.width, offCanvas.height).data;
       const positions = [];
-      const step = 4; // adjust to sample more or fewer pixels
+      const step = 2; // finer sampling step for more detail
       for (let y = 0; y < offCanvas.height; y += step) {
         for (let x = 0; x < offCanvas.width; x += step) {
           const index = (y * offCanvas.width + x) * 4;
