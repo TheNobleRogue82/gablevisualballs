@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tremble's Pebbles – Glass Cube Bubbles</title>
+  <title>Tremble's Pebbles – Glass Cube with Bubbles</title>
   <style>
     body { margin: 0; overflow: hidden; background: #000; }
     canvas { display: block; }
@@ -13,177 +13,197 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
-  <script>
-    // --- Three.js Scene Setup ---
-    let scene, camera, renderer, cube;
-    const ballMeshes = [];  // holds sphere Mesh objects
-    const ballData = [];    // holds extra parameters for each ball (initialPos, vibration frequency, phase)
+<script>
+  // --- Global Variables ---
+  let scene, camera, renderer, cube;
+  const ballMeshes = [];  // sphere Mesh objects
+  const ballData = [];    // extra parameters (initial position, vibration frequency & phase)
 
-    initScene();
-    loadDataAndCreateBalls();
-    animate();
+  // --- Environment Setup ---
+  initScene();
+  loadDataAndCreateBalls();
+  animate();
 
-    function initScene() {
-      scene = new THREE.Scene();
-      renderer = new THREE.WebGLRenderer({ antialias: true });
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      document.body.appendChild(renderer.domElement);
+  function initScene() {
+    scene = new THREE.Scene();
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    document.body.appendChild(renderer.domElement);
 
-      // Setup perspective camera
-      camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-      camera.position.set(0, 0, 15);
-      scene.add(camera);
+    // Load an environment map to provide realistic reflections.
+    const cubeTextureLoader = new THREE.CubeTextureLoader();
+    const envMap = cubeTextureLoader.load([
+      'https://threejs.org/examples/textures/cube/Bridge2/posx.jpg',
+      'https://threejs.org/examples/textures/cube/Bridge2/negx.jpg',
+      'https://threejs.org/examples/textures/cube/Bridge2/posy.jpg',
+      'https://threejs.org/examples/textures/cube/Bridge2/negy.jpg',
+      'https://threejs.org/examples/textures/cube/Bridge2/posz.jpg',
+      'https://threejs.org/examples/textures/cube/Bridge2/negz.jpg',
+    ]);
+    scene.background = envMap;
 
-      // Create a glass-like cube (size chosen to contain the bubbles)
-      const cubeSize = 10;
-      const cubeGeometry = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
-      const cubeMaterial = new THREE.MeshPhysicalMaterial({
-        color: 0xffffff,
-        metalness: 0,
-        roughness: 0,
-        transmission: 1,    // enables glass effect (requires WebGL2)
-        transparent: true,
-        opacity: 0.3,
-        side: THREE.DoubleSide,
-      });
-      cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
-      scene.add(cube);
+    // Setup a perspective camera.
+    camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 0, 25);
+    scene.add(camera);
 
-      // Add some lights for better glass & sphere rendering
-      scene.add(new THREE.AmbientLight(0xffffff, 0.5));
-      const dirLight = new THREE.DirectionalLight(0xffffff, 1);
-      dirLight.position.set(5, 10, 7.5);
-      scene.add(dirLight);
+    // Create a glass cube (size = 20 units) with transmission and reflections.
+    const cubeSize = 20;
+    const cubeGeometry = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
+    const cubeMaterial = new THREE.MeshPhysicalMaterial({
+      color: 0xffffff,
+      metalness: 0,
+      roughness: 0,
+      transmission: 1,    // glass-like transparency
+      transparent: true,
+      opacity: 0.3,
+      envMap: envMap,
+      envMapIntensity: 1,
+      side: THREE.DoubleSide,
+    });
+    cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+    scene.add(cube);
 
-      window.addEventListener('resize', onWindowResize, false);
+    // Add lights to enhance reflections and shading.
+    scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+    dirLight.position.set(10, 20, 10);
+    scene.add(dirLight);
+
+    window.addEventListener('resize', onWindowResize, false);
+  }
+
+  function onWindowResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  }
+
+  // --- Data & Ball Parameters ---
+  // Adjust these constants to map your XLSX data into sphere size.
+  const MIN_DIAMETER = 0.5;
+  const MAX_DIAMETER = 5.0;
+  const MIN_AMOUNT = 1;
+  const MAX_AMOUNT = 5000000;
+  const DATE_RANGE = 30;  // days
+  const MAX_BALL_COUNT = 50;  // limit the number of spheres
+
+  // Vibration: More recent sales vibrate faster, older (6 days or more) remain still.
+  const MAX_VIBRATION_FREQUENCY = 10; // in Hz
+  const VIBRATION_AMPLITUDE = 0.2;      // maximum displacement in units
+
+  function loadDataAndCreateBalls() {
+    fetch('https://gabledatavisual.blob.core.windows.net/data/pebbles.xlsx')
+      .then(response => {
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        return response.arrayBuffer();
+      })
+      .then(data => {
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+        createBallsFromData(jsonData);
+      })
+      .catch(error => console.error('Error fetching XLSX:', error));
+  }
+
+  function createBallsFromData(data) {
+    const today = new Date();
+    // Remove any existing balls.
+    ballMeshes.forEach(mesh => scene.remove(mesh));
+    ballMeshes.length = 0;
+    ballData.length = 0;
+
+    for (let record of data) {
+      if (ballMeshes.length >= MAX_BALL_COUNT) break;
+      try {
+        const excelDate = record['OpenOrder[OrderDate]'];
+        const date = new Date((excelDate - 25569) * 86400 * 1000);
+        const daysOld = Math.floor((today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+        if (daysOld > DATE_RANGE) continue;
+        const amountField = record['[SumOrderTotal]'];
+        if (typeof amountField !== 'number') continue;
+        const amount = amountField;
+        if (isNaN(amount) || amount < 1) continue;
+
+        // Compute sphere diameter scaled linearly by sale amount.
+        const diameter = MIN_DIAMETER + ((amount - MIN_AMOUNT) / (MAX_AMOUNT - MIN_AMOUNT)) * (MAX_DIAMETER - MIN_DIAMETER);
+
+        // Create a reflective sphere.
+        const sphereGeometry = new THREE.SphereGeometry(diameter / 2, 32, 32);
+        const sphereMaterial = new THREE.MeshStandardMaterial({
+          color: randomColor(),
+          metalness: 0.3,
+          roughness: 0.1,
+          envMap: scene.background,
+          envMapIntensity: 1,
+        });
+        const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+
+        // Place the sphere inside the cube (ensuring it stays fully within).
+        const cubeSize = 20;
+        const margin = diameter / 2;
+        const posX = THREE.MathUtils.randFloat(-cubeSize/2 + margin, cubeSize/2 - margin);
+        const posY = THREE.MathUtils.randFloat(-cubeSize/2 + margin, cubeSize/2 - margin);
+        const posZ = THREE.MathUtils.randFloat(-cubeSize/2 + margin, cubeSize/2 - margin);
+        sphere.position.set(posX, posY, posZ);
+
+        // Compute vibration frequency: if daysOld < 6, frequency is proportional to (6 - daysOld); otherwise zero.
+        const frequency = daysOld < 6 ? MAX_VIBRATION_FREQUENCY * ((6 - daysOld) / 6) : 0;
+        const phase = Math.random() * Math.PI * 2;
+        ballData.push({ initialPos: new THREE.Vector3(posX, posY, posZ), frequency: frequency, phase: phase });
+        ballMeshes.push(sphere);
+        scene.add(sphere);
+      } catch (e) {
+        console.error("Error processing record: ", record, e);
+      }
     }
+  }
 
-    function onWindowResize() {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    }
+  // Refresh data every hour.
+  setInterval(loadDataAndCreateBalls, 60 * 60 * 1000);
 
-    // --- Data Settings & Vibration Parameters ---
-    // These constants map the XLSX data into sphere size (in cube units)
-    const MIN_DIAMETER = 0.1;
-    const MAX_DIAMETER = 1.0;
-    const MIN_AMOUNT = 1;
-    const MAX_AMOUNT = 5000000;
-    const DATE_RANGE = 30; // days
+  function randomColor() {
+    const r = Math.floor(Math.random() * 256);
+    const g = Math.floor(Math.random() * 256);
+    const b = Math.floor(Math.random() * 256);
+    return `rgb(${r},${g},${b})`;
+  }
 
-    // For vibration: more recent sales vibrate faster. For sales 6 days old or more the vibration is zero.
-    const MAX_VIBRATION_FREQUENCY = 10; // in Hz (adjust as needed)
-    const VIBRATION_AMPLITUDE = 0.1;      // maximum displacement (cube units)
+  // --- Animation Loop ---
+  function animate() {
+    requestAnimationFrame(animate);
+    const time = performance.now() / 1000;
 
-    // --- Load Data and Create Bubbles ---
-    function loadDataAndCreateBalls() {
-      fetch('https://gabledatavisual.blob.core.windows.net/data/pebbles.xlsx')
-        .then(response => {
-          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-          return response.arrayBuffer();
-        })
-        .then(data => {
-          const workbook = XLSX.read(data, { type: 'array' });
-          const sheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[sheetName];
-          const jsonData = XLSX.utils.sheet_to_json(worksheet);
-          createBallsFromData(jsonData);
-        })
-        .catch(error => console.error('Error fetching XLSX:', error));
-    }
+    // Camera orbit with a slight vertical oscillation.
+    const radius = 25;
+    const camX = radius * Math.cos(time * 0.3);
+    const camZ = radius * Math.sin(time * 0.3);
+    const camY = 8 * Math.sin(time * 0.2);
+    camera.position.set(camX, camY, camZ);
+    camera.lookAt(0, 0, 0);
 
-    function createBallsFromData(data) {
-      const today = new Date();
-      // Remove any existing balls from the scene
-      ballMeshes.forEach(mesh => scene.remove(mesh));
-      ballMeshes.length = 0;
-      ballData.length = 0;
+    // Update each sphere's position with a small vibratory offset.
+    ballMeshes.forEach((mesh, idx) => {
+      const data = ballData[idx];
+      if (data.frequency > 0) {
+        const offsetX = VIBRATION_AMPLITUDE * Math.sin(time * data.frequency + data.phase);
+        const offsetY = VIBRATION_AMPLITUDE * Math.cos(time * data.frequency + data.phase);
+        const offsetZ = VIBRATION_AMPLITUDE * Math.sin(time * data.frequency + data.phase * 0.5);
+        mesh.position.set(
+          data.initialPos.x + offsetX,
+          data.initialPos.y + offsetY,
+          data.initialPos.z + offsetZ
+        );
+      } else {
+        mesh.position.copy(data.initialPos);
+      }
+    });
 
-      data.forEach(record => {
-        try {
-          const excelDate = record['OpenOrder[OrderDate]'];
-          const date = new Date((excelDate - 25569) * 86400 * 1000);
-          const daysOld = Math.floor((today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-          if (daysOld > DATE_RANGE) return;
-          const amountField = record['[SumOrderTotal]'];
-          if (typeof amountField !== 'number') return;
-          const amount = amountField;
-          if (isNaN(amount) || amount < 1) return;
-
-          // Compute sphere diameter scaled by amount
-          const diameter = MIN_DIAMETER + ((amount - MIN_AMOUNT) / (MAX_AMOUNT - MIN_AMOUNT)) * (MAX_DIAMETER - MIN_DIAMETER);
-          
-          // Create a sphere geometry; using a moderate detail
-          const sphereGeometry = new THREE.SphereGeometry(diameter / 2, 32, 32);
-          const sphereMaterial = new THREE.MeshStandardMaterial({ color: randomColor(), roughness: 0.5, metalness: 0.1 });
-          const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-          
-          // Position the sphere randomly inside the cube (ensuring it stays fully inside)
-          const cubeSize = 10;
-          const margin = diameter / 2;
-          const posX = THREE.MathUtils.randFloat(-cubeSize/2 + margin, cubeSize/2 - margin);
-          const posY = THREE.MathUtils.randFloat(-cubeSize/2 + margin, cubeSize/2 - margin);
-          const posZ = THREE.MathUtils.randFloat(-cubeSize/2 + margin, cubeSize/2 - margin);
-          sphere.position.set(posX, posY, posZ);
-          
-          // Compute vibration frequency: linear mapping so that if daysOld < 6, frequency is proportional to (6 - daysOld); otherwise zero.
-          const frequency = daysOld < 6 ? MAX_VIBRATION_FREQUENCY * ((6 - daysOld) / 6) : 0;
-          // Add a random phase offset so that not all spheres vibrate in unison
-          const phase = Math.random() * Math.PI * 2;
-          ballData.push({ initialPos: new THREE.Vector3(posX, posY, posZ), frequency: frequency, phase: phase });
-          ballMeshes.push(sphere);
-          scene.add(sphere);
-        } catch (e) {
-          console.error("Error processing record: ", record, e);
-        }
-      });
-    }
-
-    // Refresh data every hour
-    setInterval(loadDataAndCreateBalls, 60 * 60 * 1000);
-
-    function randomColor() {
-      const r = Math.floor(Math.random() * 256);
-      const g = Math.floor(Math.random() * 256);
-      const b = Math.floor(Math.random() * 256);
-      return `rgb(${r},${g},${b})`;
-    }
-
-    // --- Animation Loop ---
-    function animate() {
-      requestAnimationFrame(animate);
-      const time = performance.now() / 1000;
-
-      // Animate the camera in an orbit (similar in spirit to the provided shader code)
-      const radius = 15;
-      const camX = radius * Math.cos(time * 0.3);
-      const camZ = radius * Math.sin(time * 0.3);
-      const camY = 5 * Math.sin(time * 0.2); // adds a slight vertical oscillation
-      camera.position.set(camX, camY, camZ);
-      camera.lookAt(0, 0, 0);
-
-      // Update each ball: add a small vibratory offset based on its frequency (if any)
-      ballMeshes.forEach((mesh, idx) => {
-        const data = ballData[idx];
-        if (data.frequency > 0) {
-          const offsetX = VIBRATION_AMPLITUDE * Math.sin(time * data.frequency + data.phase);
-          const offsetY = VIBRATION_AMPLITUDE * Math.cos(time * data.frequency + data.phase);
-          // A small additional offset in Z
-          const offsetZ = VIBRATION_AMPLITUDE * Math.sin(time * data.frequency + data.phase * 0.5);
-          mesh.position.set(
-            data.initialPos.x + offsetX,
-            data.initialPos.y + offsetY,
-            data.initialPos.z + offsetZ
-          );
-        } else {
-          // For older sales (6 days or more), no vibration occurs.
-          mesh.position.copy(data.initialPos);
-        }
-      });
-
-      renderer.render(scene, camera);
-    }
-  </script>
+    renderer.render(scene, camera);
+  }
+</script>
 </body>
 </html>
