@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tremble's Pebbles – Uniform Circle Formation</title>
+  <title>Tremble's Pebbles – Uniform Formation</title>
   <style>
     @font-face {
       font-family: 'FutoSansHeavy';
@@ -22,14 +22,13 @@
       left: 0;
     }
   </style>
-  <!-- Make sure to run this from a local or remote web server, not file:// -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
   <canvas id="ballCanvas"></canvas>
   <script>
-    // ----------------- Background Shader (optional) -----------------
+    // ----------------- Background Shader -----------------
     let scene, camera, renderer, planes = [];
     initBackground();
     animateBackground();
@@ -50,7 +49,6 @@
           uniform float iTime;
           uniform vec2 iResolution;
           
-          // Simple 2D noise
           vec3 mod289(vec3 x) {
               return x - floor(x * (1.0 / 289.0)) * 289.0;
           }
@@ -151,11 +149,11 @@
 
     const balls = [];
     
-    // For data-driven orbit mode
+    // For data-driven orbit mode.
     const orbitRadius = Math.min(canvas.width, canvas.height) / 3;
     
-    // Formation mode: bigger circle so we see a complete ring around the G
-    let formationRingRadius = Math.min(canvas.width, canvas.height) / 2.8;
+    // Formation mode: balls arrange uniformly in a circle around the center.
+    let formationRingRadius = Math.min(canvas.width, canvas.height) / 8;
     
     // Rotation speed for the formation ring (radians per second)
     const formationRotationSpeed = 0.5;
@@ -178,12 +176,11 @@
         this.orbitRadius = orbitRadius * (0.8 + Math.random() * 0.4);
         this.orbitSpeed = speedFactor * 0.001;
         this.color = randomColor();
-        // Current data-driven orbit position
+        // Current data-driven orbit position.
         this.x = 0;
         this.y = 0;
       }
       update() {
-        // Move in data-driven orbit
         this.orbitAngle += this.orbitSpeed;
         if (this.orbitAngle >= 2 * Math.PI) this.orbitAngle -= 2 * Math.PI;
         this.x = canvas.width / 2 + this.orbitRadius * Math.cos(this.orbitAngle);
@@ -201,12 +198,10 @@
           const date = new Date((excelDate - 25569) * 86400 * 1000);
           const daysOld = Math.floor((today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
           if (daysOld > DATE_RANGE) return;
-          
           const amountField = record['[SumOrderTotal]'];
           if (typeof amountField !== 'number') return;
           const amount = amountField;
           if (isNaN(amount) || amount < 1) return;
-          
           // Linear scaling of diameter based on amount.
           const diameter = MIN_DIAMETER + ((amount - MIN_AMOUNT) / (MAX_AMOUNT - MIN_AMOUNT)) * (MAX_DIAMETER - MIN_DIAMETER);
           const speedFactor = SPEED_FACTORS[Math.min(daysOld, DATE_RANGE)];
@@ -217,17 +212,15 @@
           console.error("Error processing record: ", record, e);
         }
       });
-      
-      console.log("Number of balls loaded:", balls.length);
     }
     
     // ----------------- Animation Loop -----------------
     function animateBalls() {
-      // Extended 20-sec cycle:
+      // Cycle (20 sec total):
       // 0 - 12 sec: data-driven orbit (blend = 0)
-      // 12 - 14 sec: transition into formation (blend: 0→1)
-      // 14 - 18 sec: formation mode (blend = 1)  (4 seconds of stable circle)
-      // 18 - 20 sec: transition back (blend: 1→0)
+      // 12 - 14 sec: transition into formation (blend increases 0 → 1)
+      // 14 - 18 sec: formation mode (blend = 1)
+      // 18 - 20 sec: transition back (blend decreases 1 → 0)
       const now = performance.now() / 1000;
       const period = 20.0;
       const cycleT = now % period;
@@ -251,23 +244,18 @@
       ctx.textBaseline = "middle";
       ctx.fillText("G", canvas.width / 2, canvas.height / 2);
       
-      // The formation circle rotates slowly
+      // Compute formation rotation so that the entire circle rotates slowly.
       const formationRotation = now * formationRotationSpeed;
       
-      // Draw each ball
+      // Draw each ball.
+      // Here we re-calculate the formation angle uniformly by using the ball’s index.
       balls.forEach((ball, i) => {
-        // Update the data-driven orbit
         ball.update();
-        
-        // Uniform angle around the circle for formation mode
         const uniformAngle = (i / balls.length) * 2 * Math.PI;
         const formationX = canvas.width / 2 + formationRingRadius * Math.cos(uniformAngle + formationRotation);
         const formationY = canvas.height / 2 + formationRingRadius * Math.sin(uniformAngle + formationRotation);
+        const formationSize = TARGET_RADIUS;  // uniform small size in formation
         
-        // Uniform small size in formation
-        const formationSize = TARGET_RADIUS;
-        
-        // Interpolate between data-driven orbit and formation circle
         const currentX = (1 - blend) * ball.x + blend * formationX;
         const currentY = (1 - blend) * ball.y + blend * formationY;
         const currentRadius = (1 - blend) * ball.radius + blend * formationSize;
@@ -314,16 +302,15 @@
           animateBalls();
         })
         .catch(error => console.error('Error fetching XLSX:', error));
-      
-      // Refresh every hour
+      // Refresh every hour.
       setInterval(refreshData, 60 * 60 * 1000);
     };
 
-    // Recalculate canvas and formation parameters on resize
+    // Recalculate canvas and formation parameters on resize.
     window.addEventListener('resize', () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
-      formationRingRadius = Math.min(canvas.width, canvas.height) / 2.8;
+      formationRingRadius = Math.min(canvas.width, canvas.height) / 8;
     });
   </script>
 </body>
