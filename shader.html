@@ -148,7 +148,7 @@
 
     const balls = [];
     let targetPositions = []; // Array to hold positions from the text "G"
-    // Reduce orbit radius so balls orbit closer to the center
+    // Slightly smaller orbit radius so they’re closer to center
     const orbitRadius = Math.min(canvas.width, canvas.height) / 3;
 
     // Helper: Generate a random color that remains fixed for each ball.
@@ -159,20 +159,20 @@
       return `rgb(${r},${g},${b})`;
     }
 
-    // Ball class – now stores its orbit (current) position and later gets a target position.
+    // Ball class – stores orbit position and target position.
     class Ball {
       constructor(diameter, speedFactor, orbitAngle) {
         this.diameter = diameter;
         this.radius = diameter / 2;
         this.orbitAngle = orbitAngle;
-        // Orbit radius: random factor between 80% and 120% of the new, smaller orbitRadius
+        // Orbit radius: random factor between 80% and 120% of the new orbitRadius
         this.orbitRadius = orbitRadius * (0.8 + Math.random() * 0.4);
         this.orbitSpeed = speedFactor * 0.001;
         this.color = randomColor();
-        // Current positions (to be updated)
+        // Current orbit position (updated each frame)
         this.x = 0;
         this.y = 0;
-        // Target positions for the "G" (assigned later)
+        // Target “G” position (assigned later)
         this.targetX = canvas.width / 2;
         this.targetY = canvas.height / 2;
         this.targetRadius = TARGET_RADIUS;
@@ -182,179 +182,28 @@
         if (this.orbitAngle >= 2 * Math.PI) {
           this.orbitAngle -= 2 * Math.PI;
         }
-        // Compute orbit (current) positions
         this.x = canvas.width / 2 + this.orbitRadius * Math.cos(this.orbitAngle);
         this.y = canvas.height / 2 + this.orbitRadius * Math.sin(this.orbitAngle);
       }
     }
 
-    // Compute target positions by drawing a “G” offscreen.
+    // Compute target positions by drawing a “G” offscreen, then bounding-box centering.
     function computeTargetPositions() {
-      // Use a larger offscreen canvas and font size for a thicker, more detailed G.
       const offCanvas = document.createElement('canvas');
       offCanvas.width = 300;
       offCanvas.height = 300;
       const offCtx = offCanvas.getContext('2d');
+
+      // Fill with black so "white" stands out
       offCtx.fillStyle = "black";
       offCtx.fillRect(0, 0, offCanvas.width, offCanvas.height);
-      // Increase font size to capture more of the G’s detail.
-      offCtx.font = "bold 180px FutoSansHeavy, Arial, sans-serif";
+
+      // Slightly smaller font than before so we don’t clip edges
+      offCtx.font = "bold 150px FutoSansHeavy, Arial, sans-serif";
       offCtx.textAlign = "center";
       offCtx.textBaseline = "middle";
       offCtx.fillStyle = "white";
       offCtx.fillText("G", offCanvas.width / 2, offCanvas.height / 2);
 
       const imageData = offCtx.getImageData(0, 0, offCanvas.width, offCanvas.height).data;
-      const positions = [];
-      const step = 2; // finer sampling step for more detail
-      for (let y = 0; y < offCanvas.height; y += step) {
-        for (let x = 0; x < offCanvas.width; x += step) {
-          const index = (y * offCanvas.width + x) * 4;
-          const alpha = imageData[index + 3];
-          if (alpha > 128) {
-            positions.push({ x: x, y: y });
-          }
-        }
-      }
-      // Adjust positions to main canvas coordinates (center the offscreen image)
-      for (let pos of positions) {
-        pos.x = pos.x - offCanvas.width / 2 + canvas.width / 2;
-        pos.y = pos.y - offCanvas.height / 2 + canvas.height / 2;
-      }
-      return positions;
-    }
-
-    // Load data from the XLSX and create balls.
-    function loadBallsFromData(data) {
-      const today = new Date();
-      balls.length = 0;
-      data.forEach(record => {
-        try {
-          const excelDate = record['OpenOrder[OrderDate]'];
-          const date = new Date((excelDate - 25569) * 86400 * 1000);
-          const daysOld = Math.floor((today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-          if (daysOld > DATE_RANGE) return;
-
-          const amountField = record['[SumOrderTotal]'];
-          if (typeof amountField !== 'number') return;
-          const amount = amountField;
-          if (isNaN(amount) || amount < 1) return;
-          // Linear scaling of diameter based on amount
-          const diameter = MIN_DIAMETER + ((amount - MIN_AMOUNT) / (MAX_AMOUNT - MIN_AMOUNT)) * (MAX_DIAMETER - MIN_DIAMETER);
-          const speedFactor = SPEED_FACTORS[Math.min(daysOld, DATE_RANGE)];
-          const orbitAngle = Math.random() * 2 * Math.PI;
-          const ball = new Ball(diameter, speedFactor, orbitAngle);
-          balls.push(ball);
-        } catch (e) {
-          console.error("Error processing record: ", record, e);
-        }
-      });
-      // After loading balls, compute target positions from the letter "G"
-      targetPositions = computeTargetPositions();
-      // Assign each ball a target position (cycle through if needed)
-      balls.forEach((ball, i) => {
-        const pos = targetPositions[i % targetPositions.length];
-        ball.targetX = pos.x;
-        ball.targetY = pos.y;
-        ball.targetRadius = TARGET_RADIUS;
-      });
-    }
-
-    // Animation loop for the balls.
-    function animateBalls() {
-      // Compute a blend factor that oscillates over a period (6 sec full cycle)
-      const now = performance.now() / 1000;
-      const period = 6.0;
-      const t = (now % period) / period;
-      let blend = 0;
-      if (t < 0.25) {
-        blend = t / 0.25; // blend increases from 0 to 1 over first 25%
-      } else if (t < 0.5) {
-        blend = 1; // hold formation for next 25%
-      } else if (t < 0.75) {
-        blend = 1 - ((t - 0.5) / 0.25); // blend back to orbit state
-      } else {
-        blend = 0;
-      }
-      
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      // (Optional) If you wish to remove the static drawn "G" text,
-      // simply comment out the following block.
-      /*
-      ctx.font = "bold 100px FutoSansHeavy, Arial, sans-serif";
-      ctx.fillStyle = "black";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.shadowBlur = 10;
-      ctx.shadowColor = "rgba(100, 149, 237, 2.5)";
-      ctx.fillText("G", canvas.width / 2, canvas.height / 2);
-      ctx.shadowBlur = 0;
-      */
-      // Update and draw each ball with positions and sizes interpolated based on blend.
-      balls.forEach(ball => {
-        ball.update();
-        // Interpolate between orbit (ball.x, ball.y, ball.radius) and target (ball.targetX, ball.targetY, TARGET_RADIUS)
-        const currentX = (1 - blend) * ball.x + blend * ball.targetX;
-        const currentY = (1 - blend) * ball.y + blend * ball.targetY;
-        const currentRadius = (1 - blend) * ball.radius + blend * ball.targetRadius;
-        ctx.beginPath();
-        ctx.fillStyle = ball.color;
-        ctx.arc(currentX, currentY, currentRadius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.closePath();
-      });
-      requestAnimationFrame(animateBalls);
-    }
-
-    // Data refresh functions (unchanged except that loadBallsFromData now sets target positions)
-    function refreshData() {
-      fetch('https://gabledatavisual.blob.core.windows.net/data/pebbles.xlsx')
-        .then(response => {
-          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-          return response.arrayBuffer();
-        })
-        .then(data => {
-          const workbook = XLSX.read(data, { type: 'array' });
-          const sheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[sheetName];
-          const jsonData = XLSX.utils.sheet_to_json(worksheet);
-          loadBallsFromData(jsonData);
-        })
-        .catch(error => console.error('Error fetching XLSX:', error));
-    }
-    window.onload = () => {
-      fetch('https://gabledatavisual.blob.core.windows.net/data/pebbles.xlsx')
-        .then(response => {
-          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-          return response.arrayBuffer();
-        })
-        .then(data => {
-          const workbook = XLSX.read(data, { type: 'array' });
-          const sheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[sheetName];
-          const jsonData = XLSX.utils.sheet_to_json(worksheet);
-          loadBallsFromData(jsonData);
-          animateBalls();
-        })
-        .catch(error => console.error('Error fetching XLSX:', error));
-
-      setInterval(refreshData, 60 * 60 * 1000);
-    };
-
-    // (Optional) Handle canvas resize – you might want to re‑compute the target positions if the canvas size changes.
-    window.addEventListener('resize', () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-      // Recompute target positions on resize.
-      if (targetPositions.length > 0) {
-        targetPositions = computeTargetPositions();
-        balls.forEach((ball, i) => {
-          const pos = targetPositions[i % targetPositions.length];
-          ball.targetX = pos.x;
-          ball.targetY = pos.y;
-        });
-      }
-    });
-  </script>
-</body>
-</html>
+      const
