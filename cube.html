@@ -55,8 +55,8 @@
   // Load a 360° equirectangular background and set up the environment.
   function loadEnvironment(callback) {
     const loader = new THREE.TextureLoader();
-    // A 360 photo (equirectangular image) URL – feel free to replace with your own.
-    loader.load('https://threejs.org/examples/textures/equirectangular/royal_esplanade_1k.jpg', function(texture) {
+    // Use a valid 360 equirectangular .jpg from the Three.js examples folder
+    loader.load('https://threejs.org/examples/textures/equirectangular/pedestrian_overpass_2k.jpg', function(texture) {
       texture.mapping = THREE.EquirectangularReflectionMapping;
       texture.encoding = THREE.sRGBEncoding;
       
@@ -195,37 +195,3 @@
 
   // --- Animation Loop ---
   function animate() {
-    requestAnimationFrame(animate);
-    const time = performance.now() / 1000;
-
-    // Slow camera orbit: reduce angular speed by half.
-    const orbitSpeed = 0.15; // slower than before
-    const radius = 15;
-    const camX = radius * Math.cos(time * orbitSpeed);
-    const camZ = radius * Math.sin(time * orbitSpeed);
-    const camY = 5 * Math.sin(time * 0.1); // gentle vertical oscillation
-    camera.position.set(camX, camY, camZ);
-    camera.lookAt(0, 0, 0);
-
-    // Update each sphere's position with a small vibratory offset.
-    ballMeshes.forEach((mesh, idx) => {
-      const data = ballData[idx];
-      if (data.frequency > 0) {
-        const offsetX = VIBRATION_AMPLITUDE * Math.sin(time * data.frequency + data.phase);
-        const offsetY = VIBRATION_AMPLITUDE * Math.cos(time * data.frequency + data.phase);
-        const offsetZ = VIBRATION_AMPLITUDE * Math.sin(time * data.frequency + data.phase * 0.5);
-        mesh.position.set(
-          data.initialPos.x + offsetX,
-          data.initialPos.y + offsetY,
-          data.initialPos.z + offsetZ
-        );
-      } else {
-        mesh.position.copy(data.initialPos);
-      }
-    });
-
-    renderer.render(scene, camera);
-  }
-</script>
-</body>
-</html>
