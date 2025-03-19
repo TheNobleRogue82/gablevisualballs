@@ -44,6 +44,7 @@
       renderer.domElement.style.left = '0';
       renderer.domElement.style.zIndex = '-1';
 
+      // Updated fragment shader for a "Deep Space" effect.
       const fragmentShader = `
           precision mediump float;
           uniform float iTime;
@@ -86,15 +87,19 @@
           void mainImage( out vec4 fragColor, in vec2 fragCoord )
           {
               vec2 uv = fragCoord / iResolution.xy;
-              float n = snoise(uv * 10.0 + iTime * 0.5);
-              float shimmer = sin(iTime + uv.x * 10.0) * 0.5 + 0.5;
+              // Deep space base: a gradient from nearly black to dark blue.
+              vec3 baseColor = mix(vec3(0.0, 0.0, 0.05), vec3(0.0, 0.0, 0.1), uv.y);
               
-              vec3 color1 = vec3(0.611765, 0.262745, 0.996078);
-              vec3 color2 = vec3(0.298039, 0.760784, 0.913725);
-              vec3 color3 = vec3(0.062745, 0.078431, 0.600000);
+              // Nebula effect: subtle noise introduces hints of purple.
+              float n = snoise(uv * 20.0 + iTime * 0.1);
+              vec3 nebulaColor = vec3(0.2, 0.0, 0.2) * n * 0.2;
               
-              vec3 col = mix(color1, color2, uv.y + n * 0.3);
-              col = mix(col, color3, uv.x + shimmer * 0.3);
+              // Combine base and nebula.
+              vec3 col = baseColor + nebulaColor;
+              
+              // Star field: add tiny white stars randomly.
+              float star = smoothstep(0.995, 1.0, fract(sin(dot(fragCoord.xy, vec2(12.9898,78.233))) * 43758.5453));
+              col += vec3(star);
               
               fragColor = vec4(col, 1.0);
           }
@@ -237,9 +242,9 @@
       
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       
-      // Draw the static letter "G" in the center.
+      // Draw the static letter "G" in the center in white.
       ctx.font = "bold 100px FutoSansHeavy, Arial, sans-serif";
-      ctx.fillStyle = "black";
+      ctx.fillStyle = "white";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText("G", canvas.width / 2, canvas.height / 2);
