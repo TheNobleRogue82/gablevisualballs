@@ -193,6 +193,37 @@
       }
     }
     
+    // ----------------- Helper Function: Draw Circular Text -----------------
+    // This function draws a string along a circular arc centered at (centerX, centerY)
+    // with the given radius. The text is centered by calculating the total angle.
+    function drawCircularText(ctx, text, centerX, centerY, radius, startAngle) {
+      ctx.save();
+      ctx.translate(centerX, centerY);
+      
+      // Measure total width to determine total arc angle.
+      let totalWidth = 0;
+      for (let i = 0; i < text.length; i++) {
+        totalWidth += ctx.measureText(text[i]).width;
+      }
+      const totalAngle = totalWidth / radius;
+      // Adjust starting angle so that text is centered.
+      let curAngle = startAngle - totalAngle / 2;
+      
+      for (let i = 0; i < text.length; i++) {
+        const letter = text[i];
+        const letterWidth = ctx.measureText(letter).width;
+        const letterAngle = letterWidth / radius;
+        ctx.save();
+        // Rotate so the letter is tangential to the circle.
+        ctx.rotate(curAngle + letterAngle / 2);
+        // Draw the letter with its baseline at the circle.
+        ctx.fillText(letter, 0, -radius);
+        ctx.restore();
+        curAngle += letterAngle;
+      }
+      ctx.restore();
+    }
+    
     // Load data from XLSX and create balls.
     function loadBallsFromData(data) {
       const today = new Date();
@@ -272,19 +303,16 @@
         ctx.closePath();
       });
       
-      // Draw revolving text.
-      // The text will orbit around the center, fading in as formation mode blends in.
-      const textOrbitRadius = formationRingRadius + 80; // adjust offset as needed
-      ctx.save();
-      ctx.translate(canvas.width / 2, canvas.height / 2);
-      ctx.rotate(formationRotation);
-      ctx.globalAlpha = blend; // fade text in and out with formation blend
-      ctx.font = "bold 24px FutoSansHeavy, Arial, sans-serif";
+      // Draw revolving curved text.
+      // Set a smaller font and an orbit radius slightly outside the formation ring.
+      const textOrbitRadius = formationRingRadius + 80;
+      ctx.globalAlpha = blend; // fade text in/out with formation blend
+      ctx.font = "bold 16px FutoSansHeavy, Arial, sans-serif";
       ctx.fillStyle = "white";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText("New Sales Orders - 7 Days", textOrbitRadius, 0);
-      ctx.restore();
+      // Use formationRotation as the base angle for the curved text.
+      drawCircularText(ctx, "New Sales Orders - 7 Days", canvas.width / 2, canvas.height / 2, textOrbitRadius, formationRotation);
       ctx.globalAlpha = 1.0;
       
       requestAnimationFrame(animateBalls);
