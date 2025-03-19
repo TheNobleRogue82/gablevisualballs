@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tremble's Pebbles – Uniform Formation</title>
+  <style>
+    @font-face {
+      font-family: 'FutoSansHeavy';
+      src: url('https://gabledatavisual.blob.core.windows.net/data/futo-sans-heavy.ttf') format('truetype');
+    }
+    body {
+      margin: 0;
+      overflow: hidden;
+      position: relative;
+      background: #000;
+    }
+    canvas {
+      display: block;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+  <canvas id="ballCanvas"></canvas>
+  <script>
+    // ----------------- Background Shader -----------------
+    let scene, camera, renderer, planes = [];
+    initBackground();
+    animateBackground();
+    
+    function initBackground() {
+      scene = new THREE.Scene();
+      camera = new THREE.Camera();
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.body.appendChild(renderer.domElement);
+      renderer.domElement.style.position = 'fixed';
+      renderer.domElement.style.top = '0';
+      renderer.domElement.style.left = '0';
+      renderer.domElement.style.zIndex = '-1';
+
+      // Updated fragment shader for a "Deep Space" effect.
+      const fragmentShader = `
+          precision mediump float;
+          uniform float iTime;
+          uniform vec2 iResolution;
+          
+          vec3 mod289(vec3 x) {
+              return x - floor(x * (1.0 / 289.0)) * 289.0;
+          }
+          vec2 mod289(vec2 x) {
+              return x - floor(x * (1.0 / 289.0)) * 289.0;
+          }
+          vec3 permute(vec3 x) {
+              return mod289(((x*34.0)+1.0)*x);
+          }
+          float snoise(vec2 v){
+              const vec4 C = vec4(0.211324865405187, 0.366025403784439,
+                                  -0.577350269189626, 0.024390243902439);
+              vec2 i  = floor(v + dot(v, C.yy) );
+              vec2 x0 = v - i + dot(i, C.xx);
+              vec2 i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+              vec4 x12 = x0.xyxy + C.xxzz;
+              x12.xy -= i1;
+              i = mod289(i);
+              vec3 p = permute( permute( i.y + vec3(0.0, i1.y, 1.0 ))
+                + i.x + vec3(0.0, i1.x, 1.0 ));
+              vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);
+              m = m*m;
+              m = m*m;
+              vec3 x = 2.0 * fract(p * C.www) - 1.0;
+              vec3 h = abs(x) - 0.5;
+              vec3 ox = floor(x + 0.5);
+              vec3 a0 = x - ox;
+              m *= 1.79284291400159 - 0.85373472095314 * ( a0*a0 + h*h );
+              vec3 g;
+              g.x  = a0.x  * x0.x + h.x  * x0.y;
+              g.yz = a0.yz * x12.xz + h.yz * x12.yw;
+              return 130.0 * dot(m, g);
+          }
+          
+          void mainImage( out vec4 fragColor, in vec2 fragCoord )
+          {
+              vec2 uv = fragCoord / iResolution.xy;
+              // Deep space base: a gradient from nearly black to dark blue.
+              vec3 baseColor = mix(vec3(0.0, 0.0, 0.05), vec3(0.0, 0.0, 0.1), uv.y);
+              
+              // Nebula effect: subtle noise introduces hints of purple.
+              float n = snoise(uv * 20.0 + iTime * 0.1);
+              vec3 nebulaColor = vec3(0.2, 0.0, 0.2) * n * 0.2;
+              
+              // Combine base and nebula.
+              vec3 col = baseColor + nebulaColor;
+              
+              // Star field: add tiny white stars randomly.
+              float star = smoothstep(0.995, 1.0, fract(sin(dot(fragCoord.xy, vec2(12.9898,78.233))) * 43758.5453));
+              col += vec3(star);
+              
+              fragColor = vec4(col, 1.0);
+          }
+          
+          void main() {
+              mainImage(gl_FragColor, gl_FragCoord.xy);
+          }
+      `;
+
+      let geometry = new THREE.PlaneBufferGeometry(2, 2);
+      let material = new THREE.ShaderMaterial({
+        uniforms: {
+          iTime: { value: 0 },
+          iResolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) }
+        },
+        fragmentShader: fragmentShader,
+        transparent: false
+      });
+      let plane = new THREE.Mesh(geometry, material);
+      scene.add(plane);
+      planes.push({ mesh: plane, material: material });
+      window.addEventListener('resize', onWindowResize, false);
+    }
+    function onWindowResize() {
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      planes.forEach(planeObj => {
+        planeObj.material.uniforms.iResolution.value.set(window.innerWidth, window.innerHeight);
+      });
+    }
+    function animateBackground() {
+      requestAnimationFrame(animateBackground);
+      planes.forEach(planeObj => {
+        planeObj.material.uniforms.iTime.value += 0.01;
+      });
+      renderer.render(scene, camera);
+    }
+    
+    // ----------------- Balls & Animation -----------------
+    const canvas = document.getElementById('ballCanvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    
+    // Settings for data scaling and orbit
+    const MIN_DIAMETER = 15;
+    const MAX_DIAMETER = 3000;
+    const MIN_AMOUNT = 1;
+    const MAX_AMOUNT = 5000000;
+    const DATE_RANGE = 30;
+    const SPEED_FACTORS = [20, 18, 14, 9, 8, 5, 2, 1];
+    const TARGET_RADIUS = 7; // uniform ball size in formation mode
+
+    const balls = [];
+    
+    // For data-driven orbit mode.
+    const orbitRadius = Math.min(canvas.width, canvas.height) / 3;
+    
+    // Formation mode: balls arrange uniformly in a circle around the center.
+    let formationRingRadius = Math.min(canvas.width, canvas.height) / 8;
+    
+    // Rotation speed for the formation ring (radians per second)
+    const formationRotationSpeed = 0.5;
+    
+    // Helper: generate a random color (each ball keeps its color)
+    function randomColor() {
+      const r = Math.floor(Math.random() * 256);
+      const g = Math.floor(Math.random() * 256);
+      const b = Math.floor(Math.random() * 256);
+      return `rgb(${r},${g},${b})`;
+    }
+    
+    // Ball class – holds its data‐driven orbit state.
+    class Ball {
+      constructor(diameter, speedFactor, orbitAngle) {
+        this.diameter = diameter;
+        this.radius = diameter / 2;
+        this.orbitAngle = orbitAngle;
+        // Data-driven orbit: orbit radius is a random factor (80%-120%) of the base orbitRadius.
+        this.orbitRadius = orbitRadius * (0.8 + Math.random() * 0.4);
+        this.orbitSpeed = speedFactor * 0.001;
+        this.color = randomColor();
+        // Current data-driven orbit position.
+        this.x = 0;
+        this.y = 0;
+      }
+      update() {
+        this.orbitAngle += this.orbitSpeed;
+        if (this.orbitAngle >= 2 * Math.PI) this.orbitAngle -= 2 * Math.PI;
+        this.x = canvas.width / 2 + this.orbitRadius * Math.cos(this.orbitAngle);
+        this.y = canvas.height / 2 + this.orbitRadius * Math.sin(this.orbitAngle);
+      }
+    }
+    
+    // ----------------- Helper Function: Draw Circular Text -----------------
+    // This function draws a string along a circular arc centered at (centerX, centerY)
+    // with the given radius. The text is centered by calculating the total angle.
+    function drawCircularText(ctx, text, centerX, centerY, radius, startAngle) {
+      ctx.save();
+      ctx.translate(centerX, centerY);
+      
+      // Measure total width to determine total arc angle.
+      let totalWidth = 0;
+      for (let i = 0; i < text.length; i++) {
+        totalWidth += ctx.measureText(text[i]).width;
+      }
+      const totalAngle = totalWidth / radius;
+      // Adjust starting angle so that text is centered.
+      let curAngle = startAngle - totalAngle / 2;
+      
+      for (let i = 0; i < text.length; i++) {
+        const letter = text[i];
+        const letterWidth = ctx.measureText(letter).width;
+        const letterAngle = letterWidth / radius;
+        ctx.save();
+        // Rotate so the letter is tangential to the circle.
+        ctx.rotate(curAngle + letterAngle / 2);
+        // Draw the letter with its baseline at the circle.
+        ctx.fillText(letter, 0, -radius);
+        ctx.restore();
+        curAngle += letterAngle;
+      }
+      ctx.restore();
+    }
+    
+    // Load data from XLSX and create balls.
+    function loadBallsFromData(data) {
+      const today = new Date();
+      balls.length = 0;
+      data.forEach(record => {
+        try {
+          const excelDate = record['OpenOrder[OrderDate]'];
+          const date = new Date((excelDate - 25569) * 86400 * 1000);
+          const daysOld = Math.floor((today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+          if (daysOld > DATE_RANGE) return;
+          const amountField = record['[SumOrderTotal]'];
+          if (typeof amountField !== 'number') return;
+          const amount = amountField;
+          if (isNaN(amount) || amount < 1) return;
+          // Linear scaling of diameter based on amount.
+          const diameter = MIN_DIAMETER + ((amount - MIN_AMOUNT) / (MAX_AMOUNT - MIN_AMOUNT)) * (MAX_DIAMETER - MIN_DIAMETER);
+          const speedFactor = SPEED_FACTORS[Math.min(daysOld, DATE_RANGE)];
+          const orbitAngle = Math.random() * 2 * Math.PI;
+          const ball = new Ball(diameter, speedFactor, orbitAngle);
+          balls.push(ball);
+        } catch (e) {
+          console.error("Error processing record: ", record, e);
+        }
+      });
+    }
+    
+    // ----------------- Animation Loop -----------------
+    function animateBalls() {
+      // Cycle (20 sec total):
+      // 0 - 12 sec: data-driven orbit (blend = 0)
+      // 12 - 14 sec: transition into formation (blend increases 0 → 1)
+      // 14 - 18 sec: formation mode (blend = 1)
+      // 18 - 20 sec: transition back (blend decreases 1 → 0)
+      const now = performance.now() / 1000;
+      const period = 20.0;
+      const cycleT = now % period;
+      let blend = 0;
+      if (cycleT < 12) {
+        blend = 0;
+      } else if (cycleT < 14) {
+        blend = (cycleT - 12) / 2;
+      } else if (cycleT < 18) {
+        blend = 1;
+      } else {
+        blend = 1 - ((cycleT - 18) / 2);
+      }
+      
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // Draw the static letter "G" in the center in white.
+      ctx.font = "bold 100px FutoSansHeavy, Arial, sans-serif";
+      ctx.fillStyle = "white";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("G", canvas.width / 2, canvas.height / 2);
+      
+      // Compute formation rotation so that the entire circle rotates slowly.
+      const formationRotation = now * formationRotationSpeed;
+      
+      // Draw each ball.
+      // Here we re-calculate the formation angle uniformly by using the ball’s index.
+      balls.forEach((ball, i) => {
+        ball.update();
+        const uniformAngle = (i / balls.length) * 2 * Math.PI;
+        const formationX = canvas.width / 2 + formationRingRadius * Math.cos(uniformAngle + formationRotation);
+        const formationY = canvas.height / 2 + formationRingRadius * Math.sin(uniformAngle + formationRotation);
+        const formationSize = TARGET_RADIUS;  // uniform small size in formation
+        
+        const currentX = (1 - blend) * ball.x + blend * formationX;
+        const currentY = (1 - blend) * ball.y + blend * formationY;
+        const currentRadius = (1 - blend) * ball.radius + blend * formationSize;
+        
+        ctx.beginPath();
+        ctx.fillStyle = ball.color;
+        ctx.arc(currentX, currentY, currentRadius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.closePath();
+      });
+      
+      // Draw revolving curved text.
+      // Set a smaller font and an orbit radius slightly outside the formation ring.
+      const textOrbitRadius = formationRingRadius + 10;
+      ctx.globalAlpha = blend; // fade text in/out with formation blend
+      ctx.font = "bold 14px FutoSansHeavy, Arial, sans-serif";
+      ctx.fillStyle = "white";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      // Use formationRotation as the base angle for the curved text.
+      drawCircularText(ctx, "New Sales Orders - 7 Days", canvas.width / 2, canvas.height / 2, textOrbitRadius, formationRotation);
+      ctx.globalAlpha = 1.0;
+      
+      requestAnimationFrame(animateBalls);
+    }
+    
+    // ----------------- Data Fetching -----------------
+    function refreshData() {
+      fetch('https://gabledatavisual.blob.core.windows.net/data/pebbles.xlsx')
+        .then(response => {
+          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+          return response.arrayBuffer();
+        })
+        .then(data => {
+          const workbook = XLSX.read(data, { type: 'array' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet);
+          loadBallsFromData(jsonData);
+        })
+        .catch(error => console.error('Error fetching XLSX:', error));
+    }
+    
+    window.onload = () => {
+      fetch('https://gabledatavisual.blob.core.windows.net/data/pebbles.xlsx')
+        .then(response => {
+          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+          return response.arrayBuffer();
+        })
+        .then(data => {
+          const workbook = XLSX.read(data, { type: 'array' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet);
+          loadBallsFromData(jsonData);
+          animateBalls();
+        })
+        .catch(error => console.error('Error fetching XLSX:', error));
+      // Refresh every hour.
+      setInterval(refreshData, 60 * 60 * 1000);
+    };
+
+    // Recalculate canvas and formation parameters on resize.
+    window.addEventListener('resize', () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      formationRingRadius = Math.min(canvas.width, canvas.height) / 8;
+    });
+  </script>
+</body>
+</html>
